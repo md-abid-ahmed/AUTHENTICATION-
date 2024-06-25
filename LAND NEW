@@ -1,0 +1,180 @@
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { MdDelete, MdAppRegistration, MdAccountBox } from "react-icons/md";
+import { RxUpdate } from "react-icons/rx";
+import { FaUserEdit, FaCogs, FaChartLine } from "react-icons/fa";
+import './Landingpage.css';
+
+const roles = {
+  admin: 'admin',
+  developer: 'developer',
+  executive: 'executive',
+};
+
+interface Button {
+  label: string;
+  icon: JSX.Element;
+  route: string;
+}
+
+const actionButtons: Record<string, Button[]> = {
+  admin: [
+    { label: 'Update Application Limit', icon: <RxUpdate />, route: '/update-app-limit' },
+    { label: 'Update User Limit', icon: <FaUserEdit />, route: '/update-user-limit' },
+    { label: 'Update Instance Type', icon: <FaCogs />, route: '/update-instance-type' },
+    { label: 'App Overview', icon: <FaChartLine />, route: '/app-overview' },
+    { label: 'Manage User Accounts', icon: <MdAccountBox />, route: '/manage-user-accounts' },
+  ],
+  developer: [
+    { label: 'Create New App', icon: <MdAppRegistration />, route: '/create-app' },
+    { label: 'Delete App', icon: <MdDelete />, route: '/delete-app' },
+    { label: 'Request Threshold Change', icon: <FaUserEdit />, route: '/request-threshold-change' },
+    { label: 'Change Policy per App', icon: <FaCogs />, route: '/change-policy-app' },
+    { label: 'App Overview', icon: <FaChartLine />, route: '/app-overview' },
+  ],
+  executive: [
+    { label: 'App Overview', icon: <FaChartLine />, route: '/app-overview' },
+  ],
+};
+
+const getUserRole = () => {
+  return roles.admin; 
+};
+
+const Landingpage: React.FC = () => {
+  const navigate = useNavigate();
+  const role = getUserRole();
+
+  const renderButtons = () => {
+    return actionButtons[role].map((button: Button, index: number) => (
+      <div key={index} className="land-dashboardTile" onClick={() => navigate(button.route)}>
+        <div className="land-tileIcon">{button.icon}</div>
+        <div className="land-tileLabel">{button.label}</div>
+      </div>
+    ));
+  };
+
+  return (
+    <div className="land-dashboardContainer">
+      <div className="land-dashboardHeader">
+        <h1 className="land-headerTitle">Cloud Cost Optimization Center</h1>
+        <p className="land-headerRole">{role.charAt(0).toUpperCase() + role.slice(1)} Dashboard</p>
+      </div>
+      <div className="land-dashboardGrid">
+        {renderButtons()}
+      </div>
+    </div>
+  );
+};
+
+export default Landingpage;
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700&display=swap');
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Open Sans', sans-serif;
+  background-color: #FFFFFF;
+  color: #000000;
+}
+
+.land-dashboardContainer {
+  min-height: 100vh;
+  padding: 2rem;
+  box-sizing: border-box;
+}
+
+.land-dashboardHeader {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.land-headerTitle {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: #D71E28;
+}
+
+.land-headerRole {
+  font-size: 1.2rem;
+  color: #000000;
+}
+
+.land-dashboardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 2rem;
+  justify-content: center;
+}
+
+.land-dashboardTile {
+  background: #FFFFFF;
+  border: 2px solid #F1F1F1;
+  border-radius: 8px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.land-dashboardTile:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(215, 30, 40, 0.1);
+  border-color: #D71E28;
+}
+
+.land-tileIcon {
+  font-size: 2.5rem;
+  margin-bottom: 1rem;
+  color: #D71E28;
+}
+
+.land-tileLabel {
+  font-size: 1rem;
+  font-weight: 600;
+  text-align: center;
+  color: #000000;
+}
+
+@media (max-width: 768px) {
+  .land-dashboardGrid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
+@keyframes land-pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.land-dashboardTile:hover .land-tileIcon {
+  animation: land-pulse 1s infinite;
+  color: #FFCD11;
+}
+
+/* Wells Fargo-style button */
+.land-wfButton {
+  background-color: #D71E28;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+
+.land-wfButton:hover {
+  background-color: #B01B23;
+}
