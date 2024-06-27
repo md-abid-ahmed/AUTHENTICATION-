@@ -1,0 +1,250 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Brush
+} from 'recharts';
+import { CSVLink } from 'react-csv';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import { Link } from 'react-router-dom';
+import './Appoverview.css';
+
+interface AppOption {
+  value: string;
+  label: string;
+}
+
+interface UtilizationData {
+  app: string;
+  instanceNo: string;
+  dateTime: string;
+  value: number;
+  type: string;
+  state: string;
+}
+
+interface ProcessedData {
+  name: string;
+  [key: string]: number | string;
+}
+
+const AppOverview: React.FC = () => {
+  const [appOptions, setAppOptions] = useState<AppOption[]>([]);
+  const [selectedAppId, setSelectedAppId] = useState<string>('');
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [utilizationData, setUtilizationData] = useState<UtilizationData[]>([]);
+  const [dateRangeType, setDateRangeType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [showInsights, setShowInsights] = useState(false);
+
+  useEffect(() => {
+    fetchApps();
+  }, []);
+
+  const fetchApps = async () => {
+    try {
+      const response = await axios.get('/fetch_apps');
+      const apps = response.data.Data.map((app: any) => ({
+        value: app._id,
+        label: `AppID: ${app._id}`
+      }));
+      setAppOptions(apps);
+    } catch (error) {
+      console.error('Error fetching apps:', error);
+    }
+  };
+
+  // Utility function to format date to "YYYY-MM-DD HH:mm:ss:00"
+  const formatDate = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}:00`;
+  };
+
+  const fetchUtilizationData = async () => {
+    if (!selectedAppId || !startDate || !endDate) return;
+
+    const postData = {
+      appID: selectedAppId,
+      "from_time": formatDate(startDate),
+      "to_time": formatDate(endDate)
+    };
+
+    try {
+      const utilizationResponse = await axios.post('/fetch_utilisation', postData);
+      console.log('Utilization Response:', utilizationResponse.data);
+      setUtilizationData(utilizationResponse.data.data);
+    } catch (error) {
+      console.error('Error fetching utilization data:', error);
+    }
+  };
+
+  const handleCalculate = () => {
+    fetchUtilizationData();
+  };
+
+  const processUtilizationData = (): ProcessedData[] => {
+    const dataMap: { [key: string]: ProcessedData } = {};
+
+    utilizationData.forEach(item => {
+      if (!dataMap[item.dateTime]) {
+        dataMap[item.dateTime] = { name: item.dateTime };
+      }
+      dataMap[item.dateTime][`usage_${item.instanceNo}`] = item.value;
+    });
+
+    return Object.values(dataMap);
+  };
+
+  const calculateInsights = () => {
+    if (utilizationData.length === 0) return { averageUsage: '0', maxUsageDay: 'N/A', minUsageDay: 'N/A' };
+
+    const totalUsage = utilizationData.reduce((acc, d) => acc + d.value, 0);
+    const averageUsage = totalUsage / utilizationData.length;
+    const maxUsageDay = utilizationData.reduce((max, d) => d.value > max.value ? d : max, utilizationData[0]);
+    const minUsageDay = utilizationData.reduce((min, d) => d.value < min.value ? d : min, utilizationData[0]);
+
+    return {
+      averageUsage: averageUsage.toFixed(2),
+      maxUsageDay: `${maxUsageDay.dateTime} (${maxUsageDay.value}%)`,
+      minUsageDay: `${minUsageDay.dateTime} (${minUsageDay.value}%)`,
+    };
+  };
+
+  const processedData = processUtilizationData();
+
+  const peekLoad = processedData.length > 0 ? Math.max(...processedData.flatMap(d => Object.values(d).filter(v => typeof v === 'number'))) : 0;
+  const minLoad = processedData.length > 0 ? Math.min(...processedData.flatMap(d => Object.values(d).filter(v => typeof v === 'number'))) : 0;
+  const costIncurred = processedData.reduce((acc, d) => acc + Object.values(d).filter(v => typeof v === 'number').reduce((sum, v) => sum + (v as number) * 0.5, 0), 0);
+  const potentialSavings = processedData.reduce((acc, d) => acc + Object.values(d).filter(v => typeof v === 'number' && (v as number) < 50).reduce((sum, v) => sum + (v as number) * 0.5 * 0.3, 0), 0);
+  const exportData = processedData.map(d => ({ ...d, instance: 'all instances' }));
+
+  return (
+    <div className="app-container">
+      <div className="app-app-overview">
+        <div className="app-header">
+          <div className="app-header-top">
+            <div className="app-app-info">
+              <select
+                className="app-app-select"
+                value={selectedAppId}
+                onChange={(e) => setSelectedAppId(e.target.value)}
+              >
+                <option value="" disabled>Select App ID</option>
+                {appOptions.map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+              <div className="app-date-picker">
+                <DatePicker
+                  selected={startDate}
+                  onChange={(date: Date | null) => setStartDate(date ?? undefined)}
+                  selectsStart
+                  startDate={startDate}
+                  endDate={endDate}
+                  placeholderText="Select start date"
+                />
+                <DatePicker
+                  selected={endDate}
+                  onChange={(date: Date | null) => setEndDate(date ?? undefined)}
+                  selectsEnd
+                  startDate={startDate}
+                  endDate={endDate}
+                  minDate={startDate}
+                  placeholderText="Select end date"
+                />
+              </div>
+            </div>
+            <div className="app-stats">
+              <div className="app-stat">
+                <h5>Peak Load</h5>
+                <p>{peekLoad.toFixed(2)}%</p>
+              </div>
+              <div className="app-stat">
+                <h5>Min Load</h5>
+                <p>{minLoad.toFixed(2)}%</p>
+              </div>
+              <div className="app-stat">
+                <h5>Cost Incurred</h5>
+                <p>${costIncurred.toFixed(2)}</p>
+              </div>
+            </div>
+          </div>
+          <div className="app-header-bottom">
+            <div className="app-date-controls">
+              <div className="app-date-range-options">
+                {['daily', 'weekly', 'monthly'].map((type) => (
+                  <label key={type} className="app-radio-label">
+                    <input
+                      type="radio"
+                      value={type}
+                      checked={dateRangeType === type}
+                      onChange={() => setDateRangeType(type as 'daily' | 'weekly' | 'monthly')}
+                    />
+                    {type.charAt(0).toUpperCase() + type.slice(1)}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <button className="app-btn app-primary" onClick={handleCalculate}>Apply Filter</button>
+            <button className="app-btn app-secondary" onClick={() => setShowInsights(true)}>Quick Insights</button>
+          </div>
+        </div>
+
+        <div className="app-chart-container">
+          <ResponsiveContainer width="100%" height={400}>
+            <LineChart data={processedData} margin={{ top: 20, right: 30, left: 20, bottom: 10 }}>
+              <CartesianGrid stroke="#f5f5f5" />
+              <XAxis dataKey="name" />
+              <YAxis label={{ value: 'Usage (%)', angle: -90, position: 'insideLeft' }} />
+              <Tooltip contentStyle={{ backgroundColor: '#fff', border: '1px solid #ccc' }} />
+              <Legend verticalAlign="top" height={36} />
+              {Array.from(new Set(utilizationData.map(d => d.instanceNo))).map(instance => (
+                <Line key={instance} type="monotone" dataKey={`usage_${instance}`} stroke="#8884d8" />
+              ))}
+              <Brush dataKey="name" height={30} stroke="#8884d8" />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+        
+        <div className="app-export">
+          <CSVLink data={exportData} filename={`utilization_data_${selectedAppId}.csv`} className="app-btn app-secondary">
+            Export CSV
+          </CSVLink>
+        </div>
+
+        {showInsights && (
+          <div className="app-insights">
+            <h3>Quick Insights</h3>
+            <div className="app-insight">
+              <h5>Average Usage</h5>
+              <p>{calculateInsights().averageUsage}%</p>
+            </div>
+            <div className="app-insight">
+              <h5>Max Usage Day</h5>
+              <p>{calculateInsights().maxUsageDay}</p>
+            </div>
+            <div className="app-insight">
+              <h5>Min Usage Day</h5>
+              <p>{calculateInsights().minUsageDay}</p>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default AppOverview;
