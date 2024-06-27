@@ -39,8 +39,8 @@ interface ProcessedData {
 const AppOverview: React.FC = () => {
   const [appOptions, setAppOptions] = useState<AppOption[]>([]);
   const [selectedAppId, setSelectedAppId] = useState<string>('');
-  const [startDate, setStartDate] = useState<Date | null>(null);
-  const [endDate, setEndDate] = useState<Date | null>(null);
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [utilizationData, setUtilizationData] = useState<UtilizationData[]>([]);
   const [dateRangeType, setDateRangeType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [showInsights, setShowInsights] = useState(false);
@@ -52,9 +52,9 @@ const AppOverview: React.FC = () => {
   const fetchApps = async () => {
     try {
       const response = await axios.get('/fetch_apps');
-      const apps = response.data.map((app: any) => ({
-        value: app.id,
-        label: `AppID: ${app.id}`
+      const apps = response.data.Data.map((app: any) => ({
+        value: app._id,
+        label: `AppID: ${app._id}`
       }));
       setAppOptions(apps);
     } catch (error) {
@@ -138,7 +138,7 @@ const AppOverview: React.FC = () => {
               <div className="app-date-picker">
                 <DatePicker
                   selected={startDate}
-                  onChange={(date: Date | null) => setStartDate(date)}
+                  onChange={(date: Date | null) => setStartDate(date ?? undefined)}
                   selectsStart
                   startDate={startDate}
                   endDate={endDate}
@@ -146,7 +146,7 @@ const AppOverview: React.FC = () => {
                 />
                 <DatePicker
                   selected={endDate}
-                  onChange={(date: Date | null) => setEndDate(date)}
+                  onChange={(date: Date | null) => setEndDate(date ?? undefined)}
                   selectsEnd
                   startDate={startDate}
                   endDate={endDate}
@@ -208,28 +208,21 @@ const AppOverview: React.FC = () => {
         </div>
 
         <div className="app-footer">
-          <div className="app-savings">
-            <h5>Potential Savings</h5>
-            <p>${potentialSavings.toFixed(2)}</p>
+          <div className="app-footer-left">
+            <CSVLink data={exportData} filename={"utilization_data.csv"} className="app-btn app-secondary">
+              Export Data
+            </CSVLink>
           </div>
-          <div className="app-buttons">
-            <CSVLink data={exportData} filename={"export.csv"} className="app-btn app-primary">Export CSV</CSVLink>
-            <Link to="/" className="app-btn app-secondary">Back</Link>
-          </div>
+          {showInsights && (
+            <div className="app-footer-right">
+              <h4>Insights</h4>
+              <p>Average Usage: {calculateInsights().averageUsage}%</p>
+              <p>Max Usage Day: {calculateInsights().maxUsageDay}</p>
+              <p>Min Usage Day: {calculateInsights().minUsageDay}</p>
+            </div>
+          )}
         </div>
       </div>
-
-      {showInsights && (
-        <div className="app-modal">
-          <div className="app-modal-content">
-            <h2>Quick Insights</h2>
-            <p>Average Usage: {calculateInsights().averageUsage}%</p>
-            <p>Max Usage Day: {calculateInsights().maxUsageDay}</p>
-            <p>Min Usage Day: {calculateInsights().minUsageDay}</p>
-            <button className="app-btn app-secondary" onClick={() => setShowInsights(false)}>Close</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
