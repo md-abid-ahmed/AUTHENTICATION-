@@ -1,22 +1,3 @@
-import React, { useState, ChangeEvent, FormEvent } from 'react';
-import './Login.css'; // Import the normal CSS file
-import { FaUser, FaLock, FaCloud, FaChartLine, FaEnvelope, FaBriefcase, FaUserTie } from 'react-icons/fa';
-import InvalidLoginPopup from './InvalidLoginPopup';
-import { useNavigate } from 'react-router-dom'; // Import useNavigate from react-router-dom
-
-const Login: React.FC = () => {
-  const [isLogin, setIsLogin] = useState<boolean>(true);
-  const [username, setUsername] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
-  const [confirmPassword, setConfirmPassword] = useState<string>('');
-  const [lineOfBusiness, setLineOfBusiness] = useState<string>('');
-  const [subLineOfBusiness, setSubLineOfBusiness] = useState<string>('');
-  const [manager, setManager] = useState<string>('');
-  const [mfa, setMfa] = useState<boolean>(false); // State for MFA toggle
-  const [isFlipped, setIsFlipped] = useState<boolean>(false);
-  const [showPopup, setShowPopup] = useState<boolean>(false);
-  const [popupMessage, setPopupMessage] = useState<string>('');
 
   const navigate = useNavigate();
 
