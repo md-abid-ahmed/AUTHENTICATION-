@@ -1,0 +1,188 @@
+interface RecommendationProps {
+  recommendations: {
+    num_instances: number;
+    Memory_size: string;
+    Disk_size: string;
+  };
+  isModifying: boolean;
+  onModify: () => void;
+  onApply: () => void;
+  onCancel: () => void;
+  onChange: (key: string, value: string | number) => void;
+}
+
+const Recommendations: React.FC<RecommendationProps> = ({
+  recommendations,
+  isModifying,
+  onModify,
+  onApply,
+  onCancel,
+  onChange,
+}) => {
+  const containerClass = isModifying ? 'recommendations-popup' : 'graph-recommendations';
+
+  return (
+    <div className={`recommendations-container ${isModifying ? 'popup-active' : ''}`}>
+      <div className={containerClass}>
+        <h3>{isModifying ? 'Modify Recommendations' : 'Recommendations'}</h3>
+        <div className="recommendation-item">
+          <label>Number of Instances:</label>
+          {isModifying ? (
+            <input
+              type="number"
+              value={recommendations.num_instances}
+              onChange={(e) => onChange('num_instances', parseInt(e.target.value))}
+            />
+          ) : (
+            <span>{recommendations.num_instances}</span>
+          )}
+        </div>
+        <div className="recommendation-item">
+          <label>Memory Size:</label>
+          {isModifying ? (
+            <input
+              type="text"
+              value={recommendations.Memory_size}
+              onChange={(e) => onChange('Memory_size', e.target.value)}
+            />
+          ) : (
+            <span>{recommendations.Memory_size}</span>
+          )}
+        </div>
+        <div className="recommendation-item">
+          <label>Disk Size:</label>
+          {isModifying ? (
+            <input
+              type="text"
+              value={recommendations.Disk_size}
+              onChange={(e) => onChange('Disk_size', e.target.value)}
+            />
+          ) : (
+            <span>{recommendations.Disk_size}</span>
+          )}
+        </div>
+        <div className="recommendation-actions">
+          {isModifying ? (
+            <>
+              <button className="graph-btn graph-secondary" onClick={onCancel}>Cancel</button>
+              <button className="graph-btn graph-primary" onClick={onApply}>Apply</button>
+            </>
+          ) : (
+            <>
+              <button className="graph-btn graph-secondary" onClick={onModify}>Modify</button>
+              <button className="graph-btn graph-primary" onClick={onApply}>Apply</button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+.recommendations-container {
+  position: relative;
+}
+
+.graph-recommendations {
+  background-color: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  margin-top: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.recommendations-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: white;
+  border-radius: 8px;
+  padding: 30px;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+.popup-active::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+}
+
+.recommendation-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.recommendations-popup .recommendation-item {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.recommendations-popup label {
+  margin-bottom: 5px;
+  color: #666;
+}
+
+.recommendations-popup input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.recommendation-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.recommendation-actions button {
+  margin-left: 10px;
+}
+
+.graph-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.3s;
+}
+
+.graph-btn.graph-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.graph-btn.graph-primary:hover {
+  background-color: #0056b3;
+}
+
+.graph-btn.graph-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.graph-btn.graph-secondary:hover {
+  background-color: #545b62;
+}
+{recommendations && (
+  <Recommendations
+    recommendations={recommendations}
+    isModifying={isModifying}
+    onModify={handleModify}
+    onApply={handleApply}
+    onCancel={handleCancel}
+    onChange={handleRecommendationChange}
+  />
+)}
