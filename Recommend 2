@@ -9,6 +9,7 @@ interface RecommendationProps {
   onApply: () => void;
   onCancel: () => void;
   onChange: (key: string, value: string | number) => void;
+  userRole: string;
 }
 
 const Recommendations: React.FC<RecommendationProps> = ({
@@ -18,8 +19,10 @@ const Recommendations: React.FC<RecommendationProps> = ({
   onApply,
   onCancel,
   onChange,
+  userRole,
 }) => {
   const containerClass = isModifying ? 'recommendations-popup' : 'graph-recommendations';
+  const isAuthorized = userRole === 'developer' || userRole === 'admin';
 
   return (
     <div className={`recommendations-container ${isModifying ? 'popup-active' : ''}`}>
@@ -61,19 +64,21 @@ const Recommendations: React.FC<RecommendationProps> = ({
             <span>{recommendations.Disk_size}</span>
           )}
         </div>
-        <div className="recommendation-actions">
-          {isModifying ? (
-            <>
-              <button className="graph-btn graph-secondary" onClick={onCancel}>Cancel</button>
-              <button className="graph-btn graph-primary" onClick={onApply}>Apply</button>
-            </>
-          ) : (
-            <>
-              <button className="graph-btn graph-secondary" onClick={onModify}>Modify</button>
-              <button className="graph-btn graph-primary" onClick={onApply}>Apply</button>
-            </>
-          )}
-        </div>
+        {isAuthorized && (
+          <div className="recommendation-actions">
+            {isModifying ? (
+              <>
+                <button className="graph-btn graph-secondary" onClick={onCancel}>Cancel</button>
+                <button className="graph-btn graph-primary" onClick={onApply}>Apply</button>
+              </>
+            ) : (
+              <>
+                <button className="graph-btn graph-secondary" onClick={onModify}>Modify</button>
+                <button className="graph-btn graph-primary" onClick={onApply}>Apply</button>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -102,7 +107,7 @@ const Recommendations: React.FC<RecommendationProps> = ({
   width: 90%;
   max-width: 500px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
+  z-index: 1001;
 }
 
 .popup-active::before {
@@ -113,76 +118,11 @@ const Recommendations: React.FC<RecommendationProps> = ({
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.5);
-  z-index: 999;
+  z-index: 1000;
 }
 
-.recommendation-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
+.popup-active .graph-recommendations {
+  filter: blur(4px);
 }
 
-.recommendations-popup .recommendation-item {
-  flex-direction: column;
-  align-items: flex-start;
-}
-
-.recommendations-popup label {
-  margin-bottom: 5px;
-  color: #666;
-}
-
-.recommendations-popup input {
-  width: 100%;
-  padding: 8px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-.recommendation-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
-}
-
-.recommendation-actions button {
-  margin-left: 10px;
-}
-
-.graph-btn {
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: bold;
-  transition: background-color 0.3s;
-}
-
-.graph-btn.graph-primary {
-  background-color: #007bff;
-  color: white;
-}
-
-.graph-btn.graph-primary:hover {
-  background-color: #0056b3;
-}
-
-.graph-btn.graph-secondary {
-  background-color: #6c757d;
-  color: white;
-}
-
-.graph-btn.graph-secondary:hover {
-  background-color: #545b62;
-}
-{recommendations && (
-  <Recommendations
-    recommendations={recommendations}
-    isModifying={isModifying}
-    onModify={handleModify}
-    onApply={handleApply}
-    onCancel={handleCancel}
-    onChange={handleRecommendationChange}
-  />
-)}
+/* ... rest of the CSS remains the same ... */
