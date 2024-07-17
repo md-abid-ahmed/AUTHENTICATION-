@@ -660,4 +660,139 @@ body {
   outline: none;
 }
 
-.monthCop
+.monthCopyControls select:focus {
+  border-color: #b31b1b;
+  outline: none;
+}
+
+.monthCopyControls button {
+  background-color: #b31b1b;
+  color: white;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 0.1rem 0.2rem rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease;
+}
+
+.monthCopyControls button:hover {
+  background-color: #c91313;
+}
+
+.monthCopyWeekControls {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 1rem 0;
+  padding: 0 1rem;
+}
+
+.monthCopyWeekControls select {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 0.5rem 0 0 0.5rem;
+  font-size: 0.9rem;
+  flex: 1;
+  background-color: #fff;
+  box-shadow: 0 0.1rem 0.2rem rgba(0, 0, 0, 0.1);
+  transition: border-color 0.3s ease;
+  max-width: 200px;
+}
+
+.monthCopyWeekControls select:focus {
+  border-color: #b31b1b;
+  outline: none;
+}
+
+.monthCopyWeekButton {
+  padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  background-color: #b31b1b;
+  color: white;
+  border: none;
+  border-radius: 0 0.5rem 0.5rem 0;
+  cursor: pointer;
+  box-shadow: 0 0.1rem 0.2rem rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease;
+}
+
+.monthCopyWeekButton:hover {
+  background-color: #c91313;
+}
+
+.monthAddButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: #b31b1b;
+}
+
+.monthAddButton:hover {
+  color: #c91313;
+}
+
+.monthSendPolicyButton {
+  background-color: #b31b1b;
+  color: white;
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+  margin-top: 1rem;
+  align-self: center;
+  box-shadow: 0 0.1rem 0.2rem rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease;
+}
+
+.monthSendPolicyButton:hover {
+  background-color: #c91313;
+}
+
+@media (max-width: 768px) {
+  .monthApp {
+    flex-direction: column;
+    padding: 0.5rem;
+  }
+
+  .monthWeekDays {
+    flex-direction: column;
+  }
+
+  .monthDaySchedule {
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 1rem;
+  }
+
+  .monthActionInputs,
+  .monthCopyControls,
+  .monthCopyWeekControls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .monthCopyControls select,
+  .monthCopyControls button,
+  .monthCopyWeekControls select,
+  .monthCopyWeekButton {
+    width: 100%;
+    margin-bottom: 0.5rem;
+    border-radius: 0.5rem;
+  }
+
+  .monthCopyWeekControls select {
+    max-width: none;
+  }
+
+  .monthInputGroup {
+    flex-direction: column;
+  }
+
+  .monthAddButtonColumn {
+    align-items: center;
+    margin-top: 0.5rem;
+  }
+}
