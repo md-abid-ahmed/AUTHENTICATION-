@@ -1,0 +1,578 @@
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { FaPlusCircle, FaMinusCircle } from 'react-icons/fa';
+import './Weekly.css';
+
+interface Action {
+  datetime: string;
+  action: number;
+  params?: {
+    no_of_instances?: number;
+    memory_size?: number;
+    disk_size?: number;
+  };
+}
+
+interface WeeklyProps {
+  existingPolicy: Action[][];
+  onUpdatePolicy: (updatedActions: Action[][]) => void;
+}
+
+const formatTime = (dateTimeString: string): string => {
+  const date = new Date(dateTimeString);
+  return date.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
+};
+
+const Weekly2: React.FC<WeeklyProps> = ({ existingPolicy, onUpdatePolicy }) => {
+  const dayNames = useMemo(() => ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], []);
+  
+  const initialDays = useMemo(() => dayNames.reduce((acc, day) => ({ ...acc, [day]: [] }), {}), [dayNames]);
+  const [days, setDays] = useState<{ [key: string]: Action[] }>(initialDays);
+
+  const [selectedDay, setSelectedDay] = useState<string>('');
+
+  const initialInputs = useMemo(() => dayNames.reduce((acc, day) => ({ ...acc, [day]: '' }), {}), [dayNames]);
+  const [timeInputs, setTimeInputs] = useState<{ [key: string]: string }>(initialInputs);
+  
+  const initialNumberInputs = useMemo(() => dayNames.reduce((acc, day) => ({ ...acc, [day]: 0 }), {}), [dayNames]);
+  const [actionInputs, setActionInputs] = useState<{ [key: string]: number }>(initialNumberInputs);
+  
+  const initialInstanceInputs = useMemo(() => dayNames.reduce((acc, day) => ({ ...acc, [day]: 100 }), {}), [dayNames]);
+  const [instanceInputs, setInstanceInputs] = useState<{ [key: string]: number }>(initialInstanceInputs);
+  
+  const initialMemorySizeInputs = useMemo(() => dayNames.reduce((acc, day) => ({ ...acc, [day]: 1024 }), {}), [dayNames]);
+  const [memorySizeInputs, setMemorySizeInputs] = useState<{ [key: string]: number }>(initialMemorySizeInputs);
+  
+  const initialDiskSizeInputs = useMemo(() => dayNames.reduce((acc, day) => ({ ...acc, [day]: 20 }), {}), [dayNames]);
+  const [diskSizeInputs, setDiskSizeInputs] = useState<{ [key: string]: number }>(initialDiskSizeInputs);
+
+  useEffect(() => {
+    if (existingPolicy && existingPolicy.length > 0) {
+      const newDays: { [key: string]: Action[] } = { ...initialDays };
+  
+      existingPolicy.forEach((dayActions, index) => {
+        if (index < 7) {
+          const day = dayNames[index];
+          newDays[day] = dayActions;
+        }
+      });
+  
+      setDays(newDays);
+    }
+  }, [existingPolicy, dayNames, initialDays]);
+  const addAction = useCallback((day: string) => {
+    if (timeInputs[day] && actionInputs[day] !== undefined) {
+      const [hours, minutes] = timeInputs[day].split(':');
+      const date = new Date();
+      const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const formattedTime = `${hours}:${minutes}:00.00`;
+      
+      const newAction: Action = {
+        datetime: `${formattedDate} ${formattedTime}`,
+        action: actionInputs[day],
+      };
+  
+      if (actionInputs[day] === 2 || actionInputs[day] === 3) {
+        newAction.params = { no_of_instances: instanceInputs[day] };
+      } else if (actionInputs[day] === 4 || actionInputs[day] === 5) {
+        newAction.params = {
+          memory_size: memorySizeInputs[day],
+          disk_size: diskSizeInputs[day],
+        };
+      }
+  
+      setDays(prevDays => {
+        const updatedDayActions = [...prevDays[day], newAction];
+        updatedDayActions.sort((a, b) => {
+          const timeA = a.datetime.split(' ')[1];
+          const timeB = b.datetime.split(' ')[1];
+          return timeA.localeCompare(timeB);
+        });
+        return {
+          ...prevDays,
+          [day]: updatedDayActions,
+        };
+      });
+  
+    
+      setTimeInputs(prev => ({ ...prev, [day]: '' }));
+      setActionInputs(prev => ({ ...prev, [day]: 0 }));
+      setInstanceInputs(prev => ({ ...prev, [day]: 100 }));
+      setMemorySizeInputs(prev => ({ ...prev, [day]: 1024 }));
+      setDiskSizeInputs(prev => ({ ...prev, [day]: 20 }));
+    } else {
+      alert('Please fill in both time and action.');
+    }
+  }, [timeInputs, actionInputs, instanceInputs, memorySizeInputs, diskSizeInputs]);
+
+  const removeAction = useCallback((day: string, datetime: string) => {
+    setDays(prevDays => {
+      const updatedDayActions = prevDays[day].filter((action) => action.datetime !== datetime);
+      updatedDayActions.sort((a, b) => {
+        const timeA = a.datetime.split(' ')[1];
+        const timeB = b.datetime.split(' ')[1];
+        return timeA.localeCompare(timeB);
+      });
+      return {
+        ...prevDays,
+        [day]: updatedDayActions,
+      };
+    });
+  }, []);
+
+  const handleCopyClick = useCallback((toDay: string) => {
+    if (selectedDay) {
+      setDays(prevDays => ({
+        ...prevDays,
+        [toDay]: [...prevDays[selectedDay]].sort((a, b) => a.datetime.localeCompare(b.datetime)),
+      }));
+    } else {
+      alert('Please select a day to copy from.');
+    }
+  }, [selectedDay]);
+
+  const updateWeeklyPolicy = useCallback(() => {
+    const policyData = dayNames.map(day => days[day]);
+    console.log(JSON.stringify(policyData));
+    onUpdatePolicy(policyData);
+  }, [days, dayNames, onUpdatePolicy]);
+
+  const ActionItem = useCallback(({ action, day }: { action: Action, day: string }) => (
+    <div key={action.datetime} className="weekActionItem">
+      <div className="weekActionItemRow">
+        <span className="weekActionTime">
+          {formatTime(action.datetime)}
+        </span>
+        <span className="weekActionType">
+          {action.action === 0 ? 'Standby' :
+           action.action === 1 ? 'Awake All' :
+           action.action === 2 ? 'Scale In' :
+           action.action === 3 ? 'Scale Out' :
+           action.action === 4 ? 'Scale Up' :
+           'Scale Down'}
+        </span>
+        <FaMinusCircle className="weekIcon weekMinus" onClick={() => removeAction(day, action.datetime)} />
+      </div>
+      {action.params && action.params.no_of_instances && (
+        <span className="weekActionParam">{action.params.no_of_instances} instances</span>
+      )}
+      {action.params && action.params.memory_size && (
+        <span className="weekActionParam">{action.params.memory_size} MB memory</span>
+      )}
+      {action.params && action.params.disk_size && (
+        <span className="weekActionParam">{action.params.disk_size} GB disk</span>
+      )}
+    </div>
+  ), [removeAction]);
+
+  return (
+    <div className="weekTop">
+      <div className="weekScrollContainer">
+        <div className="weekApp">
+          {dayNames.map((day) => (
+            <div key={day} className="weekDaySchedule">
+              <h2>{day}</h2>
+              <hr />
+              <div className="weekActionInputs">
+                <div className="weekInputGroup">
+                  <div className="weekInputColumn">
+                    <div className="weekParamsHeading">Time</div>
+                    <input
+                      type="time"
+                      className="weekTime"
+                      value={timeInputs[day]}
+                      onChange={(e) => setTimeInputs(prev => ({ ...prev, [day]: e.target.value }))}
+                    />
+                  </div>
+                  <div className="weekInputColumn">
+                    <div className="weekParamsHeading">Action</div>
+                    <select
+                      value={actionInputs[day]}
+                      className="weekAction"
+                      onChange={(e) => setActionInputs(prev => ({ ...prev, [day]: Number(e.target.value) }))}
+                    >
+                      <option value={0}>Standby</option>
+                      <option value={1}>Awake All</option>
+                      <option value={2}>Scale In</option>
+                      <option value={3}>Scale Out</option>
+                      <option value={4}>Scale Up</option>
+                      <option value={5}>Scale Down</option>
+                    </select>
+                  </div>
+                  <div className="weekInputColumn weekAddButtonColumn">
+                    <button className="weekAddButton" onClick={() => addAction(day)}>
+                      <FaPlusCircle className="weekIcon" />
+                    </button>
+                  </div>
+                </div>
+                {(actionInputs[day] === 2 || actionInputs[day] === 3) && (
+                  <div className="weekInputGroup">
+                    <div className="weekParamsHeading">No. of Instances</div>
+                    <input
+                      type="number"
+                      className="weekInstances"
+                      value={instanceInputs[day]}
+                      onChange={(e) => setInstanceInputs(prev => ({ ...prev, [day]: Number(e.target.value) }))}
+                      placeholder="Number of instances"
+                    />
+                  </div>
+                )}
+                {(actionInputs[day] === 4 || actionInputs[day] === 5) && (
+                  <>
+                    <div className="weekInputGroup">
+                      <div className="weekParamsHeading">Memory Size (MB)</div>
+                      <input
+                        type="number"
+                        className="weekMemorySize"
+                        value={memorySizeInputs[day]}
+                        onChange={(e) => setMemorySizeInputs(prev => ({ ...prev, [day]: Number(e.target.value) }))}
+                        placeholder="Memory size (MB)"
+                      />
+                    </div>
+                    <div className="weekInputGroup">
+                      <div className="weekParamsHeading">Disk Size (GB)</div>
+                      <input
+                        type="number"
+                        className="weekDiskSize"
+                        value={diskSizeInputs[day]}
+                        onChange={(e) => setDiskSizeInputs(prev => ({ ...prev, [day]: Number(e.target.value) }))}
+                        placeholder="Disk size (GB)"
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
+              <div className="weekCopyControls">
+                <select
+                  onChange={(e) => setSelectedDay(e.target.value)}
+                >
+                  <option value="">Select Day</option>
+                  {dayNames.map((d) => (
+                    <option key={d} value={d}>{d}</option>
+                  ))}
+                </select>
+                <button onClick={() => handleCopyClick(day)}>Copy</button>
+              </div>
+              <hr />
+              <div className="weekActionList">
+                {days[day].map((action) => (
+                  <ActionItem key={action.datetime} action={action} day={day} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <button onClick={updateWeeklyPolicy} className="weeksendPolicyButton">Update Weekly Policy</button>
+    </div>
+  );
+}
+
+export default Weekly2;
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f4f7f9;
+}
+
+.weekTop {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.weekDateHeader {
+  text-align: center;
+  color: #333;
+}
+
+.weekScrollContainer {
+  overflow-x: auto;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.weekScrollContainer::-webkit-scrollbar {
+  height: 12px;
+}
+
+.weekScrollContainer::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.weekScrollContainer::-webkit-scrollbar-thumb {
+  background: #b31b1b;
+  border-radius: 10px;
+}
+
+.weekScrollContainer::-webkit-scrollbar-thumb:hover {
+  background: #c91313;
+}
+
+.weekApp {
+  display: flex;
+  padding: 1rem;
+  width: max-content;
+}
+
+.weekDaySchedule {
+  background-color: white;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 1rem;
+  margin-right: 1rem;
+  box-sizing: border-box;
+  width: 300px;
+  align-self: flex-start;
+  height: fit-content;
+  display: flex;
+  flex-direction: column;
+}
+
+.weekDaySchedule h2 {
+  font-size: 1.2rem;
+  color: #b31b1b;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.weekDaySchedule hr {
+  border: 0;
+  height: 0.05rem;
+  background: #ddd;
+  margin: 0.5rem 0;
+}
+
+.weekActionList {
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #b31b1b #f4f7f9;
+}
+
+.weekActionList::-webkit-scrollbar {
+  width: 8px;
+}
+
+.weekActionList::-webkit-scrollbar-track {
+  background: #f4f7f9;
+}
+
+.weekActionList::-webkit-scrollbar-thumb {
+  background-color: #b31b1b;
+  border-radius: 20px;
+  border: 3px solid #f4f7f9;
+}
+
+.weekActionItem {
+  display: flex;
+  flex-direction: column;
+  background-color: #ffc40d;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 0.1rem 0.2rem rgba(0, 0, 0, 0.1);
+  margin-bottom: 0.5rem;
+}
+
+.weekActionItemRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.weekActionItem span {
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.weekActionTime {
+  font-weight: bold;
+}
+
+.weekActionType {
+  flex-grow: 1;
+  margin: 0 0.5rem;
+}
+
+.weekActionParam {
+  background-color: #fff5d6;
+  padding: 0.2rem 0.4rem;
+  border-radius: 0.3rem;
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
+  display: inline-block;
+}
+
+.weekIcon {
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.weekMinus {
+  color: red;
+}
+
+.weekActionInputs {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1rem;
+}
+
+.weekInputGroup {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.weekInputColumn {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.weekAddButtonColumn {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.weekParamsHeading {
+  font-weight: bold;
+  margin-bottom: 0.2rem;
+  color: #b31b1b;
+  font-size: 0.9rem;
+}
+
+.weekInputGroup input[type="time"],
+.weekInputGroup select,
+.weekInputGroup input[type="number"] {
+  padding: 0.5rem;
+  border: 0.05rem solid #ccc;
+  border-radius: 0.5rem;
+  background-color: #fff;
+  box-shadow: 0 0.1rem 0.2rem rgba(0, 0, 0, 0.1);
+  font-size: 0.8rem;
+  transition: border-color 0.3s ease;
+}
+
+.weekInputGroup input[type="time"]:focus,
+.weekInputGroup select:focus,
+.weekInputGroup input[type="number"]:focus {
+  border-color: #b31b1b;
+  outline: none;
+}
+
+.weekCopyControls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.weekCopyControls select {
+  padding: 0.3rem;
+  border: 0.05rem solid #ccc;
+  border-radius: 0.5rem;
+  margin-right: 0.5rem;
+  font-size: 0.8rem;
+  flex: 1;
+  background-color: #fff;
+  box-shadow: 0 0.1rem 0.2rem rgba(0, 0, 0, 0.1);
+  transition: border-color 0.3s ease;
+}
+
+.weekCopyControls select:focus {
+  border-color: #b31b1b;
+  outline: none;
+}
+
+.weekCopyControls button {
+  background-color: #b31b1b;
+  color: white;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  box-shadow: 0 0.1rem 0.2rem rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease;
+}
+
+.weekCopyControls button:hover {
+  background-color: #c91313;
+}
+
+.weekAddButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  color: #b31b1b;
+}
+
+.weekAddButton:hover {
+  color: #c91313;
+}
+
+.weeksendPolicyButton {
+  background-color: #b31b1b;
+  color: white;
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  font-size: 1rem;
+  margin-top: 1rem;
+  align-self: center;
+  box-shadow: 0 0.1rem 0.2rem rgba(0, 0, 0, 0.1);
+  transition: background-color 0.3s ease;
+}
+
+.weeksendPolicyButton:hover {
+  background-color: #c91313;
+}
+
+
+@media (max-width: 768px) {
+  .weekApp {
+    flex-direction: column;
+    padding: 0.5rem;
+  }
+
+  .weekDaySchedule {
+    width: 100%;
+    margin-right: 0;
+    margin-bottom: 1rem;
+  }
+
+  .weekActionInputs,
+  .weekCopyControls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .weekCopyControls select,
+  .weekCopyControls button {
+    width: 100%;
+    margin-bottom: 0.5rem;
+  }
+
+  .weekCopyControls button {
+    margin-bottom: 0;
+  }
+
+  .weekInputGroup {
+    flex-direction: column;
+  }
+
+  .weekAddButtonColumn {
+    align-items: center;
+    margin-top: 0.5rem;
+  }
+}
