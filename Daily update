@@ -1,0 +1,546 @@
+import React, { useState, useEffect, ChangeEvent } from 'react';
+import { FaPlusCircle, FaMinusCircle, FaClock } from 'react-icons/fa';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import './POLICY/Daily.css';
+
+interface Action {
+  datetime: string;
+  action: number;
+  params?: {
+    no_of_instances?: number;
+    memory_size?: number;
+    disk_size?: number;
+  };
+}
+
+const actionOptions = [
+  { value: 0, label: 'Standby' },
+  { value: 1, label: 'Awake All' },
+  { value: 2, label: 'Scale In' },
+  { value: 3, label: 'Scale Out' },
+  { value: 4, label: 'Scale Up' },
+  { value: 5, label: 'Scale Down' },
+];
+
+interface DailyProps {
+ 
+  existingPolicy: Action[][];
+  
+  onUpdatePolicy: (actions: Action[][]) => void;
+}
+
+const Daily4: React.FC<DailyProps> = ({ existingPolicy, onUpdatePolicy }) => {
+  const [actions, setActions] = useState<Action[]>([]);
+  const [timeInput, setTimeInput] = useState<string>('');
+  const [actionInput, setActionInput] = useState<number | ''>('');
+  const [instanceCount, setInstanceCount] = useState<number | ''>('');
+  const [memorySize, setMemorySize] = useState<number | ''>('');
+  const [diskSize, setDiskSize] = useState<number | ''>('');
+  const [currentDate, setCurrentDate] = useState<string>('');
+  const [currentTime, setCurrentTime] = useState<string>('');
+
+  useEffect(() => {
+    setCurrentDate(new Date().toDateString());
+    const timer = setInterval(() => {
+      setCurrentTime(new Date().toLocaleTimeString());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    if (existingPolicy) {
+      setActions(existingPolicy[0]);
+    } else {
+      setActions([]);
+    }
+  }, [existingPolicy]);
+
+  const handleAddNewAction = () => {
+    if (timeInput && actionInput !== '') {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const day = String(now.getDate()).padStart(2, '0');
+      
+      const currentDate = `${year}-${month}-${day}`;
+      const datetime = `${currentDate} ${timeInput}:00`;
+  
+      const newAction: Action = {
+        datetime: datetime,
+        action: actionInput as number,
+      };
+      
+      console.log(newAction.datetime)
+  
+      if (actionInput === 2 || actionInput === 3) {
+        newAction.params = { no_of_instances: Number(instanceCount) };
+      } else if (actionInput === 4 || actionInput === 5) {
+        newAction.params = { memory_size: Number(memorySize), disk_size: Number(diskSize) };
+      }
+  
+      const updatedActions = [...actions, newAction].sort((a, b) => {
+        const timeA = a.datetime.split(' ')[1];
+        const timeB = b.datetime.split(' ')[1];
+        return timeA.localeCompare(timeB);
+      });
+      setActions(updatedActions);
+  
+      resetInputs();
+    } else {
+      alert('Please fill in all required fields.');
+    }
+  };
+
+  const resetInputs = () => {
+    setTimeInput('');
+    setActionInput('');
+    setInstanceCount('');
+    setMemorySize('');
+    setDiskSize('');
+  };
+
+  const handleRemoveAction = (datetime: string) => {
+    const updatedActions = actions.filter(action => action.datetime !== datetime)
+      .sort((a, b) => {
+        const timeA = a.datetime.split(' ')[1];
+        const timeB = b.datetime.split(' ')[1];
+        return timeA.localeCompare(timeB);
+      });
+    setActions(updatedActions);
+  };
+
+  const handleSendDailyPolicy = () => {
+    console.log([actions])
+    onUpdatePolicy([actions]);
+  };
+
+  const calculateMetrics = () => {
+    let instanceCount = 1;
+    let memorySize = 1024; 
+    let diskSize = 10240;
+    const scaleInOutData: any[] = [];
+    const scaleUpDownData: any[] = [];
+
+    for (let i = 0; i < 24 * 60; i++) {
+      const time = new Date();
+      time.setHours(0, i, 0, 0);
+      const timeString = time.toTimeString().slice(0, 5);
+
+      scaleInOutData.push({ time: timeString, instances: instanceCount });
+      scaleUpDownData.push({ time: timeString, memory: memorySize, disk: diskSize });
+
+      actions.forEach(action => {
+        const actionTime = new Date(action.datetime);
+        if (actionTime.getHours() === time.getHours() && actionTime.getMinutes() === time.getMinutes()) {
+          switch (action.action) {
+            case 3: 
+              instanceCount += action.params?.no_of_instances || 0;
+              break;
+            case 2:
+              instanceCount = Math.max(1, instanceCount - (action.params?.no_of_instances || 0));
+              break;
+            case 4: 
+              memorySize += action.params?.memory_size || 0;
+              diskSize += action.params?.disk_size || 0;
+              break;
+            case 5: 
+              memorySize = Math.max(1024, memorySize - (action.params?.memory_size || 0));
+              diskSize = Math.max(10240, diskSize - (action.params?.disk_size || 0));
+              break;
+          }
+        }
+      });
+    }
+
+    return { scaleInOutData, scaleUpDownData };
+  };
+
+  const { scaleInOutData, scaleUpDownData } = calculateMetrics();
+
+  return (
+    <div className="daily-container wells-fargo-theme">
+      <div className="daily-header">
+        <h1>Server Management Dashboard</h1>
+        <div className="daily-date-time">
+          <span className="daily-date">{currentDate}</span>
+          <span className="daily-time"><FaClock /> {currentTime}</span>
+        </div>
+      </div>
+      <div className="daily-content">
+        <div className="daily-left-panel">
+          <h2>Schedule Actions</h2>
+          <div className="daily-action-inputs">
+            <div className="input-group">
+              <label>Start Time</label>
+              <input
+                type="time"
+                className="daily-time-input"
+                value={timeInput}
+                onChange={(e: ChangeEvent<HTMLInputElement>) => setTimeInput(e.target.value)}
+              />
+            </div>
+            <div className="input-group">
+              <label>Select Action</label>
+              <div className="select-with-button">
+                <select
+                  value={actionInput}
+                  className="daily-action-select"
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) => setActionInput(Number(e.target.value))}
+                >
+                  <option value="">Select Action</option>
+                  {actionOptions.map(option => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <button className="daily-add-button" onClick={handleAddNewAction}>
+                  <FaPlusCircle className="action-icon" />
+                </button>
+              </div>
+            </div>
+          </div>
+          {(actionInput === 2 || actionInput === 3) && (
+            <div className="daily-param-inputs">
+              <div className="input-group">
+                <label>Number of Instances</label>
+                <input
+                  type="number"
+                  className="daily-param-input"
+                  placeholder="Enter number of instances"
+                  value={instanceCount}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setInstanceCount(e.target.value === '' ? '' : Number(e.target.value))}
+                />
+              </div>
+            </div>
+          )}
+          {(actionInput === 4 || actionInput === 5) && (
+            <div className="daily-param-inputs">
+              <div className="input-group">
+                <label>Memory Size (MB)</label>
+                <input
+                  type="number"
+                  className="daily-param-input"
+                  placeholder="Enter memory size"
+                  value={memorySize}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setMemorySize(e.target.value === '' ? '' : Number(e.target.value))}
+                />
+              </div>
+              <div className="input-group">
+                <label>Disk Size (MB)</label>
+                <input
+                  type="number"
+                  className="daily-param-input"
+                  placeholder="Enter disk size"
+                  value={diskSize}
+                  onChange={(e: ChangeEvent<HTMLInputElement>) => setDiskSize(e.target.value === '' ? '' : Number(e.target.value))}
+                />
+              </div>
+            </div>
+          )}
+          <div className="daily-action-list">
+            {actions.map(action => (
+              <div key={action.datetime} className="daily-action-item">
+                <span className="daily-action-time">{new Date(action.datetime).toLocaleTimeString()}</span>
+                <span className="daily-action-name">{actionOptions.find(option => option.value === action.action)?.label}</span>
+                {action.params && (
+                  <div className="daily-action-params">
+                    {action.params.no_of_instances !== undefined && (
+                      <span className="bright-highlight">Instances: {action.params.no_of_instances}</span>
+                    )}
+                    {action.params.memory_size !== undefined && (
+                      <span className="bright-highlight">Memory: {action.params.memory_size}MB</span>
+                    )}
+                    {action.params.disk_size !== undefined && (
+                      <span className="bright-highlight">Disk: {action.params.disk_size}MB</span>
+                    )}
+                  </div>
+                )}
+                <button className="daily-remove-action" onClick={() => handleRemoveAction(action.datetime)}>
+                  <FaMinusCircle className="action-icon" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="daily-right-panel">
+          <div className="daily-chart-container">
+            <h3>Scale In/Out</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={scaleInOutData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="time" 
+                  interval={180} 
+                  tickFormatter={(time) => time.split(':')[0]}
+                />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line type="stepAfter" dataKey="instances" stroke="#8884d8" name="Instances" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="daily-chart-container">
+            <h3>Scale Up/Down</h3>
+            <ResponsiveContainer width="100%" height={200}>
+              <LineChart data={scaleUpDownData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis 
+                  dataKey="time" 
+                  interval={180} 
+                  tickFormatter={(time) => time.split(':')[0]}
+                />
+                <YAxis yAxisId="left" />
+                <YAxis yAxisId="right" orientation="right" />
+                <Tooltip />
+                <Legend />
+                <Line type="stepAfter" dataKey="memory" stroke="#82ca9d" name="Memory (MB)" yAxisId="left" strokeWidth={2} />
+                <Line type="stepAfter" dataKey="disk" stroke="#ffc658" name="Disk (MB)" yAxisId="right" strokeWidth={2} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+      <button className="daily-send-policy-button" onClick={handleSendDailyPolicy}>
+        Send Daily Policy
+      </button>
+    </div>
+  );
+};
+
+export default Daily4;
+.wells-fargo-theme {
+  --wf-red: #D71E2B;
+  --wf-yellow: #FFCD41;
+  --wf-black: #000000;
+  --wf-gray: #F0F0F0;
+  --wf-light-gray: #F8F8F8;
+  --wf-dark-gray: #333333;
+  --wf-bright-yellow: #fff9c446; 
+  font-family: Arial, sans-serif;
+}
+
+.daily-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: white;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+.daily-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid var(--wf-red);
+}
+
+.daily-header h1 {
+  color: var(--wf-red);
+  margin: 0;
+  font-size: 28px;
+}
+
+.daily-date-time {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.daily-date, .daily-time {
+  font-size: 16px;
+  color: var(--wf-dark-gray);
+  margin: 2px 0;
+}
+
+.daily-content {
+  display: flex;
+  gap: 30px;
+}
+
+.daily-left-panel, .daily-right-panel {
+  flex: 1;
+  min-width: 300px;
+}
+
+.daily-action-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.input-group label {
+  margin-bottom: 5px;
+  font-weight: bold;
+  color: var(--wf-dark-gray);
+}
+
+.daily-time-input,
+.daily-action-select,
+.daily-param-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--wf-gray);
+  border-radius: 4px;
+  font-size: 16px;
+  transition: border-color 0.3s ease;
+}
+
+.daily-time-input:focus,
+.daily-action-select:focus,
+.daily-param-input:focus {
+  outline: none;
+  border-color: var(--wf-red);
+}
+
+.daily-param-inputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.select-with-button {
+  display: flex;
+  align-items: center;
+}
+
+.daily-add-button,
+.daily-remove-action {
+  background: none;
+  border: none;
+  color: var(--wf-red);
+  cursor: pointer;
+  transition: color 0.3s ease;
+  padding: 0;
+  margin-left: 10px;
+}
+
+.daily-add-button:hover,
+.daily-remove-action:hover {
+  color: #b01823;
+}
+
+.action-icon {
+  font-size: 24px;
+}
+
+.daily-action-list {
+  max-height: 300px;
+  overflow-y: auto;
+  border: 1px solid var(--wf-gray);
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.daily-action-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px;
+  border-bottom: 1px solid var(--wf-gray);
+  background-color: var(--wf-yellow);
+  transition: background-color 0.3s ease; 
+  border-radius: 10px;
+  margin-bottom: 3px;
+}
+
+.daily-action-item.memory-action,
+.daily-action-item.instance-action {
+  background-color:red;
+}
+
+.daily-action-time {
+  font-weight: bold;
+  color: var(--wf-dark-gray);
+}
+
+.daily-action-name {
+  flex-grow: 1;
+  margin-left: 10px;
+}
+
+.daily-action-params {
+  display: flex;
+  gap: 10px;
+}
+
+
+.highlight {
+  background-color: var(--wf-yellow);
+  padding: 2px 5px;
+  border-radius: 3px;
+  font-size: 14px;
+}
+
+.daily-chart-container {
+  margin-bottom: 30px;
+}
+
+.daily-chart-container h3 {
+  color: var(--wf-dark-gray);
+  margin-bottom: 10px;
+}
+
+.daily-send-policy-button {
+  display: block;
+  width: 100%;
+  padding: 15px;
+  background-color: var(--wf-red);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.daily-send-policy-button:hover {
+  background-color: #b01823;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .daily-content {
+    flex-direction: column;
+  }
+
+  .daily-left-panel, .daily-right-panel {
+    width: 100%;
+  }
+
+  .daily-action-inputs {
+    grid-template-columns: 1fr;
+  }
+
+  .daily-param-inputs {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Scrollbar styling */
+.daily-action-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.daily-action-list::-webkit-scrollbar-track {
+  background: var(--wf-light-gray);
+}
+
+.daily-action-list::-webkit-scrollbar-thumb {
+  background-color: var(--wf-gray);
+  border-radius: 4px;
+}
+
+.daily-action-list::-webkit-scrollbar-thumb:hover {
+  background-color: var(--wf-dark-gray);
+}
