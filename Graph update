@@ -566,3 +566,11 @@ const Graph5: React.FC = () => {
             Potential Savings: ${potentialSavings.toFixed(2)}
           </div>
           <CSVLink data={[...cpuData, ...diskData, ...memoryData]} filename={"utilization_data.cs
+<CSVLink data={[...cpuData, ...diskData, ...memoryData]} filename={"utilization_data.csv"}>
+            <button className="graph-btn graph-secondary">Export CSV</button>
+          </CSVLink>
+        </div>
+      </div>
+    </div>
+  );
+};
