@@ -1,0 +1,568 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  Brush,
+  BarChart,
+  Bar,
+  Cell
+} from 'recharts';
+import { CSVLink } from 'react-csv';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
+import './Graph5.css';
+
+interface AppOption {
+  value: string;
+  label: string;
+}
+
+interface UtilizationDataItem {
+  app: string;
+  instance: number;
+  datetime: string;
+  value: number;
+  instance_type: string;
+  state: string;
+}
+
+interface UtilizationData {
+  CPU: UtilizationDataItem[];
+  disk: UtilizationDataItem[];
+  Memory: UtilizationDataItem[];
+}
+
+interface ProcessedData {
+  name: string;
+  [key: string]: number | string;
+}
+
+const Graph5: React.FC = () => {
+  const [appOptions, setAppOptions] = useState<AppOption[]>([]);
+  const [selectedAppId, setSelectedAppId] = useState<string>('');
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [utilizationData, setUtilizationData] = useState<UtilizationData>({ CPU: [], disk: [], Memory: [] });
+  const [dateRangeType, setDateRangeType] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [showInsights, setShowInsights] = useState(false);
+  const [selectedInstances, setSelectedInstances] = useState<number[]>([]);
+  const [viewMode, setViewMode] = useState<'all' | 'selected'>('all');
+  const [step, setStep] = useState<string>('1h');
+  const [expandedChart, setExpandedChart] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchApps();
+  }, []);
+
+  const fetchApps = async () => {
+    try {
+      const response = { data: { Data: [{ _id: 'A123' }, { _id: 'B456' }] } };
+      if (response.data && Array.isArray(response.data.Data)) {
+        const apps = response.data.Data.map((app: { _id: string }) => ({
+          value: app._id,
+          label: `AppID: ${app._id}`
+        }));
+        setAppOptions(apps);
+      } else {
+        console.error('Unexpected response format from /fetch_apps');
+      }
+    } catch (error) {
+      console.error('Error fetching apps:', error);
+    }
+  };
+
+  const formatDate = (date: Date): string => {
+    return date.toISOString().slice(0, 19).replace('T', ' ') + '.00';
+  };
+
+  const updateDateRange = (rangeType: 'daily' | 'weekly' | 'monthly', date: Date) => {
+    let start = new Date(date);
+    let end = new Date(date);
+
+    if (rangeType === 'weekly') {
+      start = new Date(date.setDate(date.getDate() - date.getDay() + 1));
+      end = new Date(start);
+      end.setDate(end.getDate() + 6);
+    } else if (rangeType === 'monthly') {
+      start = new Date(date.getFullYear(), date.getMonth(), 1);
+      end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    }
+
+    setStartDate(start);
+    setEndDate(end);
+  };
+
+  const fetchUtilizationData = async () => {
+    if (!selectedAppId || !startDate || !endDate) return;
+
+    const postData = {
+      appID: selectedAppId,
+      from_time: formatDate(startDate),
+      to_time: formatDate(endDate),
+      step: step
+    };
+
+    try {
+      const response = {
+        "message":"sucess",
+        "status":200,
+        "data":{
+            "CPU":[
+                {
+                    "app":"A123",
+                    "instance":0,
+                    "datetime":"2024-06-28 09:00:00",
+                    "value":124.25,
+                    "instance_type":"default",
+                    "state":"active"
+                },
+                {
+                    "app":"A123",
+                    "instance":1,
+                    "datetime":"2024-06-28 09:00:00",
+                    "value":114.25,
+                    "instance_type":"default",
+                    "state":"active"
+                },
+                {
+                    "app":"A123",
+                    "instance":2,
+                    "datetime":"2024-06-28 09:00:00",
+                    "value":144.25,
+                    "instance_type":"default",
+                    "state":"active"
+                },
+                {
+                    "app":"A123",
+                    "instance":0,
+                    "datetime":"2024-06-28 10:00:00",
+                    "value":111.25,
+                    "instance_type":"default",
+                    "state":"active"
+                },
+                {
+                    "app":"A123",
+                    "instance":1,
+                    "datetime":"2024-06-28 10:00:00",
+                    "value":14.25,
+                    "instance_type":"default",
+                    "state":"active"
+                },
+                {
+                    "app":"A123",
+                    "instance":2,
+                    "datetime":"2024-06-28 10:00:00",
+                    "value":134.25,
+                    "instance_type":"default",
+                    "state":"active"
+                }
+            ],
+            "disk":[
+                {
+                    "app":"A123",
+                    "instance":0,
+                    "datetime":"2024-06-28 09:00:00",
+                    "value":124.25,
+                    "instance_type":"default",
+                    "state":"active"
+                },
+                {
+                    "app":"A123",
+                    "instance":1,
+                    "datetime":"2024-06-28 09:00:00",
+                    "value":114.25,
+                    "instance_type":"default",
+                    "state":"active"
+                },
+                {
+                    "app":"A123",
+                    "instance":2,
+                    "datetime":"2024-06-28 09:00:00",
+                    "value":144.25,
+                    "instance_type":"default",
+                    "state":"active"
+                },
+                {
+                    "app":"A123",
+                    "instance":0,
+                    "datetime":"2024-06-28 10:00:00",
+                    "value":111.25,
+                    "instance_type":"default",
+                    "state":"active"
+                },
+                {
+                    "app":"A123",
+                    "instance":1,
+                    "datetime":"2024-06-28 10:00:00",
+                    "value":14.25,
+                    "instance_type":"default",
+                    "state":"active"
+                },
+                {
+                    "app":"A123",
+                    "instance":2,
+                    "datetime":"2024-06-28 10:00:00",
+                    "value":134.25,
+                    "instance_type":"default",
+                    "state":"active"
+                }
+            ],
+            "Memory":[
+                {
+                    "app":"A123",
+                    "instance":0,
+                    "datetime":"2024-06-28 09:00:00",
+                    "value":124.25,
+                    "instance_type":"default",
+                    "state":"active"
+                },
+                {
+                    "app":"A123",
+                    "instance":1,
+                    "datetime":"2024-06-28 09:00:00",
+                    "value":114.25,
+                    "instance_type":"default",
+                    "state":"active"
+                },
+                {
+                    "app":"A123",
+                    "instance":2,
+                    "datetime":"2024-06-28 09:00:00",
+                    "value":144.25,
+                    "instance_type":"default",
+                    "state":"active"
+                },
+                {
+                    "app":"A123",
+                    "instance":0,
+                    "datetime":"2024-06-28 10:00:00",
+                    "value":111.25,
+                    "instance_type":"default",
+                    "state":"active"
+                },
+                {
+                    "app":"A123",
+                    "instance":1,
+                    "datetime":"2024-06-28 10:00:00",
+                    "value":14.25,
+                    "instance_type":"default",
+                    "state":"active"
+                },
+                {
+                    "app":"A123",
+                    "instance":2,
+                    "datetime":"2024-06-28 10:00:00",
+                    "value":134.25,
+                    "instance_type":"default",
+                    "state":"active"
+                }
+            ]
+        }
+    }
+      if (response.data) {
+        setUtilizationData(response.data);
+      } else {
+        console.error('Unexpected response format from /fetch_utilisation');
+      }
+    } catch (error) {
+      console.error('Error fetching utilization data:', error);
+    }
+  };
+
+  const processMetricData = (metricData: UtilizationDataItem[]): ProcessedData[] => {
+    const dataMap: { [key: string]: ProcessedData } = {};
+
+    metricData.forEach(item => {
+      if (!dataMap[item.datetime]) {
+        dataMap[item.datetime] = { name: item.datetime };
+      }
+      dataMap[item.datetime][`Instance ${item.instance}`] = item.value;
+    });
+
+    return Object.values(dataMap);
+  };
+
+  const cpuData = processMetricData(utilizationData.CPU);
+  const diskData = processMetricData(utilizationData.disk);
+  const memoryData = processMetricData(utilizationData.Memory);
+
+  const calculateStats = (metricData: ProcessedData[]) => {
+    const allValues = metricData.flatMap(item => 
+      Object.entries(item)
+        .filter(([key]) => {
+          if (viewMode === 'all') return key.startsWith('Instance');
+          return key.startsWith('Instance') && selectedInstances.includes(parseInt(key.split(' ')[1]));
+        })
+        .map(([, value]) => value as number)
+    );
+
+    const peakLoad = allValues.length > 0 ? Math.max(...allValues) : 0;
+    const minLoad = allValues.length > 0 ? Math.min(...allValues) : 0;
+    const avgLoad = allValues.length > 0 ? allValues.reduce((sum, val) => sum + val, 0) / allValues.length : 0;
+
+    return { peakLoad, minLoad, avgLoad };
+  };
+
+  const cpuStats = calculateStats(cpuData);
+  const diskStats = calculateStats(diskData);
+  const memoryStats = calculateStats(memoryData);
+
+  const instances = Array.from(new Set(utilizationData.CPU.map(d => d.instance)));
+
+  const handleInstanceChange = (instance: number) => {
+    setSelectedInstances(prev => 
+      prev.includes(instance) 
+        ? prev.filter(i => i !== instance)
+        : [...prev, instance]
+    );
+    setViewMode('selected');
+  };
+
+  const handleViewModeChange = (mode: 'all' | 'selected') => {
+    setViewMode(mode);
+    if (mode === 'all') {
+      setSelectedInstances([]);
+    }
+  };
+
+  const renderInstanceSelection = () => (
+    <div className="graph-instance-selection">
+      <div className="graph-view-mode">
+        <label>
+          <input
+            type="radio"
+            checked={viewMode === 'all'}
+            onChange={() => handleViewModeChange('all')}
+          />
+          All Instances
+        </label>
+        <label>
+          <input
+            type="radio"
+            checked={viewMode === 'selected'}
+            onChange={() => handleViewModeChange('selected')}
+          />
+          Selected Instances
+        </label>
+      </div>
+      <div className="graph-instance-checkboxes">
+        {instances.map((instance) => (
+          <label key={instance}>
+            <input
+              type="checkbox"
+              checked={selectedInstances.includes(instance)}
+              onChange={() => handleInstanceChange(instance)}
+              disabled={viewMode === 'all'}
+            />
+            Instance {instance}
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+
+  const renderChart = (data: ProcessedData[], title: string, stats: { peakLoad: number, minLoad: number, avgLoad: number }) => (
+    <div className={`graph-chart ${expandedChart === title ? 'graph-expanded' : ''}`}>
+      <div className="graph-chart-header">
+        <h3>{title}</h3>
+        <button onClick={() => setExpandedChart(expandedChart === title ? null : title)}>
+          {expandedChart === title ? 'Collapse' : 'Expand'}
+        </button>
+      </div>
+      <div className="graph-chart-stats">
+        <span>Peak: {stats.peakLoad.toFixed(2)}%</span>
+        <span>Min: {stats.minLoad.toFixed(2)}%</span>
+        <span>Avg: {stats.avgLoad.toFixed(2)}%</span>
+      </div>
+      {expandedChart === title && renderInstanceSelection()}
+      <ResponsiveContainer width="100%" height={expandedChart === title ? '80%' : 300}>
+        <LineChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis />
+          <Tooltip />
+          <Legend />
+          {instances.map((instance, index) => (
+            (viewMode === 'all' || selectedInstances.includes(instance)) && (
+              <Line
+                key={instance}
+                type="monotone"
+                dataKey={`Instance ${instance}`}
+                stroke={`hsl(${index * 360 / instances.length}, 70%, 50%)`}
+                dot={false}
+              />
+            )
+          ))}
+          <Brush dataKey="name" height={30} stroke="#8884d8" />
+        </LineChart>
+      </ResponsiveContainer>
+    </div>
+  );
+
+  const calculateAvgUtilization = (metricData: UtilizationDataItem[]): { name: string, value: number }[] => {
+    const instanceSums: { [key: number]: number } = {};
+    const instanceCounts: { [key: number]: number } = {};
+
+    metricData.forEach(item => {
+      if (!instanceSums[item.instance]) {
+        instanceSums[item.instance] = 0;
+        instanceCounts[item.instance] = 0;
+      }
+      instanceSums[item.instance] += item.value;
+      instanceCounts[item.instance]++;
+    });
+
+    return Object.keys(instanceSums).map(instance => ({
+      name: `Instance ${instance}`,
+      value: instanceSums[Number(instance)] / instanceCounts[Number(instance)]
+    }));
+  };
+
+  const renderBarChart = (metricData: UtilizationDataItem[], title: string, color: string) => {
+    const data = calculateAvgUtilization(metricData);
+    return (
+      <div className="graph-bar-chart">
+        <h3>{title}</h3>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 25 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="name" 
+              axisLine={false} 
+              tickLine={false} 
+              tick={false} 
+              label={{ value: 'Instances', position: 'insideBottom', offset: -15 }}
+            />
+            <YAxis />
+            <Tooltip formatter={(value: number) => `${value.toFixed(2)}%`} />
+            <Bar dataKey="value" fill={color} radius={[4, 4, 0, 0]}>
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={color} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    );
+  };
+
+  const potentialSavings = cpuData.reduce((acc, item) => {
+    const values = Object.values(item).filter((val): val is number => typeof val === 'number');
+    const avgUtilization = values.reduce((sum, val) => sum + val, 0) / values.length;
+    return acc + (100 - avgUtilization) * 0.1;
+  }, 0);
+
+  return (
+    <div className="graph-app-container">
+      <div className="graph-app-overview">
+        <div className="graph-header">
+          <div className="graph-top-row">
+            <div className="graph-app-selector">
+              <select
+                value={selectedAppId}
+                onChange={(e) => setSelectedAppId(e.target.value)}
+              >
+                <option value="" disabled>Select App ID</option>
+                {appOptions.map(({ value, label }) => (
+                  <option key={value} value={value}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div className="graph-date-range">
+              <DatePicker
+                selected={startDate}
+                onChange={(date: Date | null) => {
+                  if (date) {
+                    setStartDate(date);
+                    if (dateRangeType !== 'daily') {
+                      updateDateRange(dateRangeType, date);
+                    }
+                  }
+                }}
+                selectsStart
+                startDate={startDate}
+                endDate={endDate}
+                placeholderText="Start Date"
+              />
+              <DatePicker
+                selected={endDate}
+                onChange={(date: Date | null) => {
+                  if (date) {
+                    setEndDate(date);
+                  }
+                }}
+                selectsEnd
+                startDate={startDate}
+                endDate={endDate}
+                minDate={startDate}
+                placeholderText="End Date"
+              />
+            </div>
+            <div className="graph-step-selector">
+              <select value={step} onChange={(e) => setStep(e.target.value)}>
+                <option value="15m">15 minutes</option>
+                <option value="1h">1 hour</option>
+                <option value="1d">1 day</option>
+              </select>
+            </div>
+          </div>
+          <div className="graph-bottom-row">
+            <div className="graph-date-controls">
+              {['daily', 'weekly', 'monthly'].map((type) => (
+                <button
+                  key={type}
+                  className={`graph-date-range-btn ${dateRangeType === type ? 'graph-active' : ''}`}
+                  onClick={() => {
+                    setDateRangeType(type as 'daily' | 'weekly' | 'monthly');
+                    if (startDate) {
+                      updateDateRange(type as 'daily' | 'weekly' | 'monthly', startDate);
+                    }
+                  }}
+                >
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </button>
+              ))}
+            </div>
+            <button className="graph-btn graph-primary" onClick={fetchUtilizationData}>Apply Filter</button>
+            <button className="graph-btn graph-secondary" onClick={() => setShowInsights(true)}>Quick Insights</button>
+          </div>
+        </div>
+
+        {!expandedChart && renderInstanceSelection()}
+
+        <div className="graph-charts-container">
+          <div className="graph-charts-row">
+            {renderChart(cpuData, "CPU Utilization", cpuStats)}
+            {renderChart(diskData, "Disk Utilization", diskStats)}
+            {renderChart(memoryData, "Memory Utilization", memoryStats)}
+          </div>
+          <div className="graph-charts-row graph-bar-charts-row">
+            {renderBarChart(utilizationData.CPU, "Average CPU Utilization", "#0088FE")}
+            {renderBarChart(utilizationData.disk, "Average Disk Utilization", "#00C49F")}
+            {renderBarChart(utilizationData.Memory, "Average Memory Utilization", "#FFBB28")}
+          </div>
+        </div>
+
+        {showInsights && (
+          <div className="graph-insights-overlay">
+            <div className="graph-insights-popup">
+              <h3>Quick Insights</h3>
+              <p>CPU: Avg {cpuStats.avgLoad.toFixed(2)}%, Peak {cpuStats.peakLoad.toFixed(2)}%, Min {cpuStats.minLoad.toFixed(2)}%</p>
+              <p>Disk: Avg {diskStats.avgLoad.toFixed(2)}%, Peak {diskStats.peakLoad.toFixed(2)}%, Min {diskStats.minLoad.toFixed(2)}%</p>
+              <p>Memory: Avg {memoryStats.avgLoad.toFixed(2)}%, Peak {memoryStats.peakLoad.toFixed(2)}%, Min {memoryStats.minLoad.toFixed(2)}%</p>
+              <button className="graph-btn graph-secondary" onClick={() => setShowInsights(false)}>Close Insights</button>
+            </div>
+          </div>
+        )}
+        <div className="graph-bottom-actions">
+          <div className="graph-potential-savings">
+            Potential Savings: ${potentialSavings.toFixed(2)}
+          </div>
+          <CSVLink data={[...cpuData, ...diskData, ...memoryData]} filename={"utilization_data.cs
