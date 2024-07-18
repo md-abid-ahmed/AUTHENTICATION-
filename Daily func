@@ -1,52 +1,24 @@
-const handleAddNewAction = () => {
-  if (timeInput && actionInput !== '') {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
-    
-    const currentDate = `${year}-${month}-${day}`;
-    const datetime = `${currentDate} ${timeInput}:00`;
-
-    const newAction: Action = {
-      datetime: datetime,
-      action: actionInput as number,
-    };
-    
-    console.log("New action datetime:", newAction.datetime);
-
-    if (actionInput === 2 || actionInput === 3) {
-      newAction.params = { no_of_instances: Number(instanceCount) };
-    } else if (actionInput === 4 || actionInput === 5) {
-      newAction.params = { memory_size: Number(memorySize), disk_size: Number(diskSize) };
-    }
-
-    console.log("New action before adding:", newAction);
-
-    const updatedActions = [...actions, newAction].sort((a, b) => {
-      const timeA = a.datetime.split(' ')[1];
-      const timeB = b.datetime.split(' ')[1];
-      return timeA.localeCompare(timeB);
-    });
-
-    console.log("Updated actions:", updatedActions);
-
-    setActions(updatedActions);
-
-    // Force a re-render and recalculation of metrics
-    setTimeout(() => {
-      const newMetrics = calculateMetrics();
-      setGraphData(newMetrics);
-    }, 0);
-
-    resetInputs();
-  } else {
-    alert('Please fill in all required fields.');
-  }
-};
-
-useEffect(() => {
-  console.log("Actions updated:", actions);
-  const newMetrics = calculateMetrics();
-  setGraphData(newMetrics);
-}, [actions]);
+<div className="daily-action-list">
+  {actions.map(action => (
+    <div key={action.datetime} className="daily-action-item">
+      <span className="daily-action-time">{new Date(action.datetime).toLocaleTimeString()}</span>
+      <span className="daily-action-name">{actionOptions.find(option => option.value === action.action)?.label}</span>
+      {action.params && (
+        <div className="daily-action-params">
+          {action.params.no_of_instances !== undefined && (
+            <span className="bright-highlight">Instances: {action.params.no_of_instances}</span>
+          )}
+          {action.params.memory_size !== undefined && (
+            <span className="bright-highlight">Memory: {action.params.memory_size}MB</span>
+          )}
+          {action.params.disk_size !== undefined && (
+            <span className="bright-highlight">Disk: {action.params.disk_size}MB</span>
+          )}
+        </div>
+      )}
+      <button className="daily-remove-action" onClick={() => handleRemoveAction(action.datetime)}>
+        <FaMinusCircle className="action-icon" />
+      </button>
+    </div>
+  ))}
+</div>
