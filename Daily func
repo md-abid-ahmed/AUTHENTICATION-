@@ -1,0 +1,38 @@
+const calculateMetrics = () => {
+  // Initialize with the first action or default values
+  const initialAction = actions[0];
+  let instanceCount = initialAction?.params?.no_of_instances ?? 1;
+  let memorySize = initialAction?.params?.memory_size ?? 1024;
+  let diskSize = initialAction?.params?.disk_size ?? 10240;
+
+  const scaleInOutData: any[] = [];
+  const scaleUpDownData: any[] = [];
+
+  for (let i = 0; i < 24 * 60; i++) {
+    const time = new Date();
+    time.setHours(0, i, 0, 0);
+    const timeString = time.toTimeString().slice(0, 5);
+
+    scaleInOutData.push({ time: timeString, instances: instanceCount });
+    scaleUpDownData.push({ time: timeString, memory: memorySize, disk: diskSize });
+
+    actions.forEach(action => {
+      const actionTime = new Date(action.datetime);
+      if (actionTime.getHours() === time.getHours() && actionTime.getMinutes() === time.getMinutes()) {
+        switch (action.action) {
+          case 3: // Scale Out
+          case 2: // Scale In
+            instanceCount = action.params?.no_of_instances ?? instanceCount;
+            break;
+          case 4: // Scale Up
+          case 5: // Scale Down
+            memorySize = action.params?.memory_size ?? memorySize;
+            diskSize = action.params?.disk_size ?? diskSize;
+            break;
+        }
+      }
+    });
+  }
+
+  return { scaleInOutData, scaleUpDownData };
+};
