@@ -1,24 +1,160 @@
-<div className="daily-action-list">
-  {actions.map(action => (
-    <div key={action.datetime} className="daily-action-item">
-      <span className="daily-action-time">{new Date(action.datetime).toLocaleTimeString()}</span>
-      <span className="daily-action-name">{actionOptions.find(option => option.value === action.action)?.label}</span>
-      {action.params && (
-        <div className="daily-action-params">
-          {action.params.no_of_instances !== undefined && (
-            <span className="bright-highlight">Instances: {action.params.no_of_instances}</span>
-          )}
-          {action.params.memory_size !== undefined && (
-            <span className="bright-highlight">Memory: {action.params.memory_size}MB</span>
-          )}
-          {action.params.disk_size !== undefined && (
-            <span className="bright-highlight">Disk: {action.params.disk_size}MB</span>
-          )}
-        </div>
-      )}
-      <button className="daily-remove-action" onClick={() => handleRemoveAction(action.datetime)}>
-        <FaMinusCircle className="action-icon" />
-      </button>
+import { parse, format } from 'date-fns';
+
+const calculateMetrics = (currentActions: Action[]) => {
+  console.log("Calculating metrics for actions:", currentActions);
+
+  let instanceCount = 1;
+  let memorySize = 1024;
+  let diskSize = 10240;
+  const scaleInOutData: any[] = [];
+  const scaleUpDownData: any[] = [];
+
+  if (!currentActions || currentActions.length === 0) {
+    console.log("No actions to process");
+    // Return default data for the entire day
+    for (let i = 0; i < 24 * 60; i++) {
+      const time = new Date();
+      time.setHours(0, i, 0, 0);
+      const timeString = format(time, "HH:mm");
+      scaleInOutData.push({ time: timeString, instances: instanceCount });
+      scaleUpDownData.push({ time: timeString, memory: memorySize, disk: diskSize });
+    }
+    return { scaleInOutData, scaleUpDownData };
+  }
+
+  // Sort the actions by datetime
+  const sortedActions = [...currentActions].sort((a, b) => {
+    const dateA = parse(a.datetime, "yyyy-MM-dd HH:mm:ss", new Date());
+    const dateB = parse(b.datetime, "yyyy-MM-dd HH:mm:ss", new Date());
+    return dateA.getTime() - dateB.getTime();
+  });
+
+  for (let i = 0; i < 24 * 60; i++) {
+    const currentTime = new Date();
+    currentTime.setHours(0, i, 0, 0);
+    const timeString = format(currentTime, "HH:mm");
+
+    // Check if there's an action at this time
+    const action = sortedActions.find(a => {
+      const actionTime = parse(a.datetime, "yyyy-MM-dd HH:mm:ss", new Date());
+      return actionTime.getHours() === currentTime.getHours() && 
+             actionTime.getMinutes() === currentTime.getMinutes();
+    });
+
+    if (action) {
+      console.log(`Applying action at ${timeString}:`, action);
+      switch (action.action) {
+        case 2: // Scale In
+        case 3: // Scale Out
+          instanceCount = action.params?.no_of_instances ?? instanceCount;
+          break;
+        case 4: // Scale Up
+        case 5: // Scale Down
+          memorySize = action.params?.memory_size ?? memorySize;
+          diskSize = action.params?.disk_size ?? diskSize;
+          break;
+      }
+      console.log(`After action: instances=${instanceCount}, memory=${memorySize}, disk=${diskSize}`);
+    }
+
+    scaleInOutData.push({ time: timeString, instances: instanceCount });
+    scaleUpDownData.push({ time: timeString, memory: memorySize, disk: diskSize });
+  }
+
+  console.log("Generated Data (first and last points):", {
+    scaleInOutData: [scaleInOutData[0], scaleInOutData[scaleInOutData.length - 1]],
+    scaleUpDownData: [scaleUpDownData[0], scaleUpDownData[scaleUpDownData.length - 1]]
+  });
+
+  return { scaleInOutData, scaleUpDownData };
+};
+
+
+
+const handleAddNewAction = () => {
+  if (timeInput && actionInput !== '') {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    
+    const currentDate = `${year}-${month}-${day}`;
+    const datetime = `${currentDate} ${timeInput}:00`;
+
+    const newAction: Action = {
+      datetime: datetime,
+      action: actionInput as number,
+    };
+    
+    console.log("New action datetime:", newAction.datetime);
+
+    if (actionInput === 2 || actionInput === 3) {
+      newAction.params = { no_of_instances: Number(instanceCount) };
+    } else if (actionInput === 4 || actionInput === 5) {
+      newAction.params = { memory_size: Number(memorySize), disk_size: Number(diskSize) };
+    }
+
+    console.log("New action before adding:", newAction);
+
+    const updatedActions = [...actions, newAction].sort((a, b) => {
+      const timeA = a.datetime.split(' ')[1];
+      const timeB = b.datetime.split(' ')[1];
+      return timeA.localeCompare(timeB);
+    });
+
+    console.log("Updated actions:", updatedActions);
+
+    setActions(updatedActions);
+
+    resetInputs();
+  } else {
+    alert('Please fill in all required fields.');
+  }
+};
+
+const { scaleInOutData, scaleUpDownData } = calculateMetrics(actions);
+
+return (
+  <div className="daily-container wells-fargo-theme">
+    {/* ... other JSX ... */}
+    <div className="daily-right-panel">
+      <div className="daily-chart-container">
+        <h3>Scale In/Out</h3>
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={scaleInOutData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="time" 
+              interval={180} 
+              tickFormatter={(time) => time.split(':')[0]}
+            />
+            <YAxis />
+            <Tooltip />
+            <Legend />
+            <Line type="stepAfter" dataKey="instances" stroke="#8884d8" name="Instances" strokeWidth={2} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="daily-chart-container">
+        <h3>Scale Up/Down</h3>
+        <ResponsiveContainer width="100%" height={200}>
+          <LineChart data={scaleUpDownData}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis 
+              dataKey="time" 
+              interval={180} 
+              tickFormatter={(time) => time.split(':')[0]}
+            />
+            <YAxis yAxisId="left" />
+            <YAxis yAxisId="right" orientation="right" />
+            <Tooltip />
+            <Legend />
+            <Line type="stepAfter" dataKey="memory" stroke="#82ca9d" name="Memory (MB)" yAxisId="left" strokeWidth={2} />
+            <Line type="stepAfter" dataKey="disk" stroke="#ffc658" name="Disk (MB)" yAxisId="right" strokeWidth={2} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
-  ))}
-</div>
+    {/* ... other JSX ... */}
+  </div>
+);
