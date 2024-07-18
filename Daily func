@@ -1,34 +1,60 @@
+import { parse, format } from 'date-fns';
+
 const calculateMetrics = () => {
-  let instanceCount = 1; // Default starting value
-  let memorySize = 1024; // Default starting value
-  let diskSize = 10240; // Default starting value
+  console.log("Existing Policy:", existingPolicy);
+
+  let instanceCount = 1;
+  let memorySize = 1024;
+  let diskSize = 10240;
   const scaleInOutData: any[] = [];
   const scaleUpDownData: any[] = [];
 
-  // Assume existingPolicy[0] contains the array of actions for the day
-  const dayActions = existingPolicy[0].sort((a, b) => 
-    new Date(a.datetime).getTime() - new Date(b.datetime).getTime()
-  );
+  if (!existingPolicy || !Array.isArray(existingPolicy) || existingPolicy.length === 0 || !Array.isArray(existingPolicy[0])) {
+    console.log("Existing policy is empty or not in the expected format");
+    // Return default data for the entire day
+    for (let i = 0; i < 24 * 60; i++) {
+      const time = new Date();
+      time.setHours(0, i, 0, 0);
+      const timeString = format(time, "HH:mm");
+      scaleInOutData.push({ time: timeString, instances: instanceCount });
+      scaleUpDownData.push({ time: timeString, memory: memorySize, disk: diskSize });
+    }
+    return { scaleInOutData, scaleUpDownData };
+  }
+
+  const dayActions = existingPolicy[0];
+  console.log("Day Actions:", dayActions);
+
+  // Sort the actions by datetime
+  dayActions.sort((a, b) => {
+    const dateA = parse(a.datetime, "yyyy-MM-dd HH:mm:ss", new Date());
+    const dateB = parse(b.datetime, "yyyy-MM-dd HH:mm:ss", new Date());
+    return dateA.getTime() - dateB.getTime();
+  });
 
   for (let i = 0; i < 24 * 60; i++) {
     const currentTime = new Date();
     currentTime.setHours(0, i, 0, 0);
-    const timeString = currentTime.toTimeString().slice(0, 5);
+    const timeString = format(currentTime, "HH:mm");
 
     // Check if there's an action at this time
     const action = dayActions.find(a => {
-      const actionTime = new Date(a.datetime);
+      const actionTime = parse(a.datetime, "yyyy-MM-dd HH:mm:ss", new Date());
       return actionTime.getHours() === currentTime.getHours() && 
              actionTime.getMinutes() === currentTime.getMinutes();
     });
 
     if (action) {
+      console.log("Applying action:", action);
       switch (action.action) {
         case 2: // Scale In
         case 3: // Scale Out
           instanceCount = action.params?.no_of_instances ?? instanceCount;
           break;
         case 4: // Scale Up
+          memorySize = action.params?.memory_size ?? memorySize;
+          diskSize = action.params?.disk_size ?? diskSize;
+          break;
         case 5: // Scale Down
           memorySize = action.params?.memory_size ?? memorySize;
           diskSize = action.params?.disk_size ?? diskSize;
@@ -40,5 +66,6 @@ const calculateMetrics = () => {
     scaleUpDownData.push({ time: timeString, memory: memorySize, disk: diskSize });
   }
 
+  console.log("Generated Data:", { scaleInOutData, scaleUpDownData });
   return { scaleInOutData, scaleUpDownData };
 };
