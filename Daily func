@@ -1,71 +1,52 @@
-import { parse, format } from 'date-fns';
+const handleAddNewAction = () => {
+  if (timeInput && actionInput !== '') {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    
+    const currentDate = `${year}-${month}-${day}`;
+    const datetime = `${currentDate} ${timeInput}:00`;
 
-const calculateMetrics = () => {
-  console.log("Existing Policy:", existingPolicy);
+    const newAction: Action = {
+      datetime: datetime,
+      action: actionInput as number,
+    };
+    
+    console.log("New action datetime:", newAction.datetime);
 
-  let instanceCount = 1;
-  let memorySize = 1024;
-  let diskSize = 10240;
-  const scaleInOutData: any[] = [];
-  const scaleUpDownData: any[] = [];
-
-  if (!existingPolicy || !Array.isArray(existingPolicy) || existingPolicy.length === 0 || !Array.isArray(existingPolicy[0])) {
-    console.log("Existing policy is empty or not in the expected format");
-    // Return default data for the entire day
-    for (let i = 0; i < 24 * 60; i++) {
-      const time = new Date();
-      time.setHours(0, i, 0, 0);
-      const timeString = format(time, "HH:mm");
-      scaleInOutData.push({ time: timeString, instances: instanceCount });
-      scaleUpDownData.push({ time: timeString, memory: memorySize, disk: diskSize });
+    if (actionInput === 2 || actionInput === 3) {
+      newAction.params = { no_of_instances: Number(instanceCount) };
+    } else if (actionInput === 4 || actionInput === 5) {
+      newAction.params = { memory_size: Number(memorySize), disk_size: Number(diskSize) };
     }
-    return { scaleInOutData, scaleUpDownData };
-  }
 
-  const dayActions = existingPolicy[0];
-  console.log("Day Actions:", dayActions);
+    console.log("New action before adding:", newAction);
 
-  // Sort the actions by datetime
-  dayActions.sort((a, b) => {
-    const dateA = parse(a.datetime, "yyyy-MM-dd HH:mm:ss", new Date());
-    const dateB = parse(b.datetime, "yyyy-MM-dd HH:mm:ss", new Date());
-    return dateA.getTime() - dateB.getTime();
-  });
-
-  for (let i = 0; i < 24 * 60; i++) {
-    const currentTime = new Date();
-    currentTime.setHours(0, i, 0, 0);
-    const timeString = format(currentTime, "HH:mm");
-
-    // Check if there's an action at this time
-    const action = dayActions.find(a => {
-      const actionTime = parse(a.datetime, "yyyy-MM-dd HH:mm:ss", new Date());
-      return actionTime.getHours() === currentTime.getHours() && 
-             actionTime.getMinutes() === currentTime.getMinutes();
+    const updatedActions = [...actions, newAction].sort((a, b) => {
+      const timeA = a.datetime.split(' ')[1];
+      const timeB = b.datetime.split(' ')[1];
+      return timeA.localeCompare(timeB);
     });
 
-    if (action) {
-      console.log("Applying action:", action);
-      switch (action.action) {
-        case 2: // Scale In
-        case 3: // Scale Out
-          instanceCount = action.params?.no_of_instances ?? instanceCount;
-          break;
-        case 4: // Scale Up
-          memorySize = action.params?.memory_size ?? memorySize;
-          diskSize = action.params?.disk_size ?? diskSize;
-          break;
-        case 5: // Scale Down
-          memorySize = action.params?.memory_size ?? memorySize;
-          diskSize = action.params?.disk_size ?? diskSize;
-          break;
-      }
-    }
+    console.log("Updated actions:", updatedActions);
 
-    scaleInOutData.push({ time: timeString, instances: instanceCount });
-    scaleUpDownData.push({ time: timeString, memory: memorySize, disk: diskSize });
+    setActions(updatedActions);
+
+    // Force a re-render and recalculation of metrics
+    setTimeout(() => {
+      const newMetrics = calculateMetrics();
+      setGraphData(newMetrics);
+    }, 0);
+
+    resetInputs();
+  } else {
+    alert('Please fill in all required fields.');
   }
-
-  console.log("Generated Data:", { scaleInOutData, scaleUpDownData });
-  return { scaleInOutData, scaleUpDownData };
 };
+
+useEffect(() => {
+  console.log("Actions updated:", actions);
+  const newMetrics = calculateMetrics();
+  setGraphData(newMetrics);
+}, [actions]);
