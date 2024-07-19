@@ -1,0 +1,158 @@
+import React, { useState, useEffect } from 'react';
+import './policy.css';
+import Monthly1 from '../Monthly1';
+import Weekly2 from './Weekly2';
+import Daily4 from '../Daily4';
+
+interface Action {
+  datetime: string;
+  action: number;
+  params?: {
+    no_of_instances?: number;
+    memory_size?: number;
+    disk_size?: number;
+  };
+}
+
+interface AppPolicy {
+  type: string;
+  data: Action[][];
+}
+
+interface AppData {
+  _id: string;
+  policy?: AppPolicy;
+}
+
+function Policy3() {
+  const [selectedAppId, setSelectedAppId] = useState<string>('');
+  const [appData, setAppData] = useState<AppData[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    fetchAppData();
+  }, []);
+
+  const fetchAppData = async () => {
+    try {
+      setLoading(true);
+ 
+      const mockData: AppData[] = [
+        {
+          _id: "app1",
+          policy: {
+            type: "monthly",
+            data: generateMockMonthlyData()
+          }
+        },
+        {
+          _id: "app2",
+          policy: {
+            type: "monthly",
+            data: generateMockMonthlyData()
+          }
+        }
+      ];
+
+      setAppData(mockData);
+    } catch (err) {
+      console.error('Error fetching app data:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateMockMonthlyData = (): Action[][] => {
+    const monthData: Action[][] = [];
+
+
+    for (let i = 0; i < 5; i++) {
+      const dayActions: Action[] = [
+        
+        {
+          datetime: `2023-08-${String(i + 1).padStart(2, '0')} 14:00:00.00`,
+          action: 2,
+          params: { no_of_instances: 1 }
+        },
+        {
+          datetime: `2023-08-${String(i + 1).padStart(2, '0')} 18:00:00.00`,
+          action: 4,
+          params: { memory_size: 2048, disk_size: 40 }
+        },
+        {
+          datetime: `2023-08-${String(i + 1).padStart(2, '0')} 09:00:00.00`,
+          action: 3,
+          params: { no_of_instances: 2 }
+        },
+      ];
+      monthData.push(dayActions);
+    }
+
+
+    for (let i = 0; i < 26; i++) {
+      monthData.push([]);
+    }
+
+    return monthData;
+  };
+
+  const getSelectedAppData = () => {
+    return appData.find(app => app._id === selectedAppId);
+  };
+
+  const handleUpdatePolicy = (updatedActions: Action[][]) => {
+    setAppData(prevAppData => 
+      prevAppData.map(app => {
+        if (app._id === selectedAppId) {
+          return {
+            ...app,
+            policy: {
+              type: "monthly",
+              data: updatedActions
+            }
+          };
+        }
+        return app;
+      })
+    );
+    console.log("Policy updated:", updatedActions);
+  };
+
+  if (loading) {
+    return <div className="policy-loading">Loading app data...</div>;
+  }
+
+  return (
+    <div className="policy-App policy-wells-fargo-theme">
+      <nav className="policy-navbar">
+        <h1>Scheduler App</h1>
+        <div className="policy-nav-content">
+          <div className="policy-app-id-selector">
+            <label htmlFor="policy-app-id-select">App ID:</label>
+            <select
+              id="policy-app-id-select"
+              value={selectedAppId}
+              onChange={(e) => setSelectedAppId(e.target.value)}
+            >
+              <option value="">Select an App ID</option>
+              {appData.map((app) => (
+                <option key={app._id} value={app._id}>
+                  {app._id}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </nav>
+
+      {selectedAppId && (
+        <Daily4
+          existingPolicy={getSelectedAppData()?.policy?.data || []}
+          onUpdatePolicy={handleUpdatePolicy}
+        />
+      )}
+    </div>
+  );
+}
+
+export default Policy3;
