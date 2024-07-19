@@ -48,8 +48,13 @@ const Daily4: React.FC<DailyProps> = ({ existingPolicy, onUpdatePolicy }) => {
   }, []);
 
   useEffect(() => {
-    if (existingPolicy) {
-      setActions(existingPolicy[0]);
+    if (existingPolicy && existingPolicy[0]) {
+      const sortedActions = [...existingPolicy[0]].sort((a, b) => {
+        const timeA = a.datetime.split(' ')[1];
+        const timeB = b.datetime.split(' ')[1];
+        return timeA.localeCompare(timeB);
+      });
+      setActions(sortedActions);
     } else {
       setActions([]);
     }
@@ -115,9 +120,12 @@ const Daily4: React.FC<DailyProps> = ({ existingPolicy, onUpdatePolicy }) => {
   };
 
   const calculateMetrics = () => {
-    let instanceCount = 1;
-    let memorySize = 1024; 
-    let diskSize = 10240;
+    
+    const initialAction = actions[0];
+    let instanceCount = initialAction?.params?.no_of_instances ?? 1;
+    let memorySize = initialAction?.params?.memory_size ?? 1024;
+    let diskSize = initialAction?.params?.disk_size ?? 10240;
+  
     const scaleInOutData: any[] = [];
     const scaleUpDownData: any[] = [];
   
@@ -133,14 +141,15 @@ const Daily4: React.FC<DailyProps> = ({ existingPolicy, onUpdatePolicy }) => {
         const actionTime = new Date(action.datetime);
         if (actionTime.getHours() === time.getHours() && actionTime.getMinutes() === time.getMinutes()) {
           switch (action.action) {
-            case 3: // Scale Out
-            case 2: // Scale In
-              instanceCount = action.params?.no_of_instances || instanceCount;
+            case 3: 
+            case 2: 
+              instanceCount = action.params?.no_of_instances ?? instanceCount;
               break;
-            case 4: // Scale Up
-            case 5: // Scale Down
-              memorySize = action.params?.memory_size || memorySize;
-              diskSize = action.params?.disk_size || diskSize;
+            case 4: 
+            case 5: 
+
+              memorySize = action.params?.memory_size ?? memorySize;
+              diskSize = action.params?.disk_size ?? diskSize;
               break;
           }
         }
@@ -149,7 +158,6 @@ const Daily4: React.FC<DailyProps> = ({ existingPolicy, onUpdatePolicy }) => {
   
     return { scaleInOutData, scaleUpDownData };
   };
-
   const { scaleInOutData, scaleUpDownData } = calculateMetrics();
 
   return (
