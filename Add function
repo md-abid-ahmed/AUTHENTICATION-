@@ -1,0 +1,38 @@
+const handleAddNewAction = () => {
+  if (timeInput && actionInput !== '') {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    
+    const currentDate = `${year}-${month}-${day}`;
+    const datetime = `${currentDate} ${timeInput}:00`;
+
+    const newAction: Action = {
+      datetime: datetime,
+      action: actionInput as number,
+    };
+    
+    console.log("New action datetime:", newAction.datetime);
+
+    if (actionInput === 2 || actionInput === 3) {
+      newAction.params = { no_of_instances: Number(instanceCount) };
+    } else if (actionInput === 4 || actionInput === 5) {
+      newAction.params = { 
+        memory_size: Number(memorySize), 
+        disk_size: Number(diskSize) 
+      };
+    }
+
+    const updatedActions = [...actions, newAction].sort((a, b) => {
+      const dateA = new Date(a.datetime);
+      const dateB = new Date(b.datetime);
+      return dateA.getTime() - dateB.getTime();
+    });
+
+    setActions(updatedActions);
+    resetInputs();
+  } else {
+    alert('Please fill in all required fields.');
+  }
+};
