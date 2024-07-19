@@ -6,6 +6,13 @@ const calculateMetrics = () => {
   const scaleInOutData: any[] = [];
   const scaleUpDownData: any[] = [];
 
+  const parseDateTime = (dateTimeString: string) => {
+    const [datePart, timePart] = dateTimeString.split(' ');
+    const [year, month, day] = datePart.split('-').map(Number);
+    const [hour, minute] = timePart.split(':').map(Number);
+    return new Date(year, month - 1, day, hour, minute);
+  };
+
   for (let i = 0; i < 24 * 60; i++) {
     const time = new Date(2024, 0, 1);  // Use a fixed date, we only care about time
     time.setHours(Math.floor(i / 60), i % 60, 0, 0);
@@ -13,7 +20,7 @@ const calculateMetrics = () => {
 
     // Apply actions that occur at this time
     actions.forEach(action => {
-      const actionTime = new Date(action.datetime);
+      const actionTime = parseDateTime(action.datetime);
       if (actionTime.getHours() === time.getHours() && actionTime.getMinutes() === time.getMinutes()) {
         switch (action.action) {
           case 2: // Scale In
