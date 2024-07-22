@@ -70,7 +70,7 @@ const Weekly2: React.FC<WeeklyProps> = ({ existingPolicy, onUpdatePolicy }) => {
     }
   }, [existingPolicy]);
 
-  const updateInput = (day: string, field: keyof DayInputs, value: string | number) => {
+  const updateInput = useCallback((day: string, field: keyof DayInputs, value: string | number) => {
     setInputs(prev => ({
       ...prev,
       [day]: {
@@ -78,9 +78,9 @@ const Weekly2: React.FC<WeeklyProps> = ({ existingPolicy, onUpdatePolicy }) => {
         [field]: value
       }
     }));
-  };
+  }, []);
 
-  const addAction = (day: string) => {
+  const addAction = useCallback((day: string) => {
     const { time, action, instances, memorySize, diskSize } = inputs[day];
     
     if (!time || action === undefined) {
@@ -89,7 +89,7 @@ const Weekly2: React.FC<WeeklyProps> = ({ existingPolicy, onUpdatePolicy }) => {
     }
   
     const newAction: Action = {
-      datetime: `${new Date().toISOString().split('T')[0]} ${time}:00.00`,
+      datetime: `${new Date().toISOString().split('T')[0]}T${time}:00.000Z`,
       action,
       params: action === 2 || action === 3 
         ? { no_of_instances: instances }
@@ -97,6 +97,7 @@ const Weekly2: React.FC<WeeklyProps> = ({ existingPolicy, onUpdatePolicy }) => {
           ? { memory_size: memorySize, disk_size: diskSize }
           : undefined
     };
+
     setDays(prevDays => ({
       ...prevDays,
       [day]: [...prevDays[day], newAction].sort((a, b) => a.datetime.localeCompare(b.datetime))
@@ -106,19 +107,18 @@ const Weekly2: React.FC<WeeklyProps> = ({ existingPolicy, onUpdatePolicy }) => {
       ...prev,
       [day]: { time: '', action: 0, instances: 100, memorySize: 1024, diskSize: 20 }
     }));
-   
-  
-   
-  };
-  const removeAction = (day: string, datetime: string) => {
+  }, [inputs]);
+
+  const removeAction = useCallback((day: string, datetime: string) => {
     setDays(prevDays => ({
       ...prevDays,
       [day]: prevDays[day]
         .filter(action => action.datetime !== datetime)
         .sort((a, b) => a.datetime.localeCompare(b.datetime))
     }));
-  };
-  const handleCopyClick = (toDay: string) => {
+  }, []);
+
+  const handleCopyClick = useCallback((toDay: string) => {
     if (!selectedDay) {
       alert('Please select a day to copy from.');
       return;
@@ -128,15 +128,17 @@ const Weekly2: React.FC<WeeklyProps> = ({ existingPolicy, onUpdatePolicy }) => {
       ...prevDays,
       [toDay]: [...prevDays[selectedDay]]
     }));
-  };
+  }, [selectedDay]);
 
-  const updateWeeklyPolicy = () => {
-    const policyData = dayNames.map(day => days[day]);
-    console.log(JSON.stringify(policyData));
-    onUpdatePolicy(policyData);
-  };
+  const updateWeeklyPolicy = useCallback(() => {
+    setTimeout(() => {
+      const policyData = dayNames.map(day => [...days[day]]);
+      console.log(JSON.stringify(policyData));
+      onUpdatePolicy(policyData);
+    }, 0);
+  }, [days, dayNames, onUpdatePolicy]);
 
-  const ActionItem = ({ action, day }: { action: Action; day: string }) => {
+  const ActionItem: React.FC<{ action: Action; day: string }> = useCallback(({ action, day }) => {
     const actionTypes = ['Standby', 'Awake All', 'Scale In', 'Scale Out', 'Scale Up', 'Scale Down'];
   
     return (
@@ -157,7 +159,7 @@ const Weekly2: React.FC<WeeklyProps> = ({ existingPolicy, onUpdatePolicy }) => {
         )}
       </div>
     );
-  };
+  }, [removeAction]);
 
   return (
     <div className="weekTop">
