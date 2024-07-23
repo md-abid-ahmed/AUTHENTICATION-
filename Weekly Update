@@ -17,149 +17,160 @@ interface WeeklyProps {
   onUpdatePolicy: (updatedActions: Action[][]) => void;
 }
 
-interface DayInputs {
-  time: string;
-  action: number;
-  instances: number;
-  memorySize: number;
-  diskSize: number;
-}
-
 const formatTime = (dateTimeString: string): string => {
   const date = new Date(dateTimeString);
   return date.toLocaleString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true });
 };
 
 const Weekly2: React.FC<WeeklyProps> = ({ existingPolicy, onUpdatePolicy }) => {
-  const dayNames = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const [dayNames] = useState(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']);
   
-  const [days, setDays] = useState<{ [key: string]: Action[] }>({
-    Monday: [],
-    Tuesday: [],
-    Wednesday: [],
-    Thursday: [],
-    Friday: [],
-    Saturday: [],
-    Sunday: []
-  });
-
-  const [inputs, setInputs] = useState<{ [key: string]: DayInputs }>({
-    Monday: { time: '', action: 0, instances: 100, memorySize: 1024, diskSize: 20 },
-    Tuesday: { time: '', action: 0, instances: 100, memorySize: 1024, diskSize: 20 },
-    Wednesday: { time: '', action: 0, instances: 100, memorySize: 1024, diskSize: 20 },
-    Thursday: { time: '', action: 0, instances: 100, memorySize: 1024, diskSize: 20 },
-    Friday: { time: '', action: 0, instances: 100, memorySize: 1024, diskSize: 20 },
-    Saturday: { time: '', action: 0, instances: 100, memorySize: 1024, diskSize: 20 },
-    Sunday: { time: '', action: 0, instances: 100, memorySize: 1024, diskSize: 20 }
-  });
-
+  const [days, setDays] = useState<{ [key: string]: Action[] }>({});
   const [selectedDay, setSelectedDay] = useState<string>('');
+  const [timeInputs, setTimeInputs] = useState<{ [key: string]: string }>({});
+  const [actionInputs, setActionInputs] = useState<{ [key: string]: number }>({});
+  const [instanceInputs, setInstanceInputs] = useState<{ [key: string]: number }>({});
+  const [memorySizeInputs, setMemorySizeInputs] = useState<{ [key: string]: number }>({});
+  const [diskSizeInputs, setDiskSizeInputs] = useState<{ [key: string]: number }>({});
 
   useEffect(() => {
+    const initialDays: { [key: string]: Action[] } = {};
+    const initialTimeInputs: { [key: string]: string } = {};
+    const initialActionInputs: { [key: string]: number } = {};
+    const initialInstanceInputs: { [key: string]: number } = {};
+    const initialMemorySizeInputs: { [key: string]: number } = {};
+    const initialDiskSizeInputs: { [key: string]: number } = {};
+
+    dayNames.forEach(day => {
+      initialDays[day] = [];
+      initialTimeInputs[day] = '';
+      initialActionInputs[day] = 0;
+      initialInstanceInputs[day] = 100;
+      initialMemorySizeInputs[day] = 1024;
+      initialDiskSizeInputs[day] = 20;
+    });
+
+    setDays(initialDays);
+    setTimeInputs(initialTimeInputs);
+    setActionInputs(initialActionInputs);
+    setInstanceInputs(initialInstanceInputs);
+    setMemorySizeInputs(initialMemorySizeInputs);
+    setDiskSizeInputs(initialDiskSizeInputs);
+
     if (existingPolicy && existingPolicy.length > 0) {
-      const newDays: { [key: string]: Action[] } = { ...days };
-  
+      const newDays = { ...initialDays };
       existingPolicy.forEach((dayActions, index) => {
         if (index < 7) {
           const day = dayNames[index];
           newDays[day] = dayActions;
         }
       });
-  
       setDays(newDays);
     }
-  }, [existingPolicy]);
-
-  const updateInput = useCallback((day: string, field: keyof DayInputs, value: string | number) => {
-    setInputs(prev => ({
-      ...prev,
-      [day]: {
-        ...prev[day],
-        [field]: value
-      }
-    }));
-  }, []);
-
+  }, [existingPolicy, dayNames])
   const addAction = useCallback((day: string) => {
-    const { time, action, instances, memorySize, diskSize } = inputs[day];
-    
-    if (!time || action === undefined) {
+    if (timeInputs[day] && actionInputs[day] !== undefined) {
+      const [hours, minutes] = timeInputs[day].split(':');
+      const date = new Date();
+      const formattedDate = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+      const formattedTime = `${hours}:${minutes}:00.00`;
+      
+      const newAction: Action = {
+        datetime: `${formattedDate} ${formattedTime}`,
+        action: actionInputs[day],
+      };
+  
+      if (actionInputs[day] === 2 || actionInputs[day] === 3) {
+        newAction.params = { no_of_instances: instanceInputs[day] };
+      } else if (actionInputs[day] === 4 || actionInputs[day] === 5) {
+        newAction.params = {
+          memory_size: memorySizeInputs[day],
+          disk_size: diskSizeInputs[day],
+        };
+      }
+  
+      setDays(prevDays => {
+        const updatedDayActions = [...prevDays[day], newAction];
+        updatedDayActions.sort((a, b) => {
+          const timeA = a.datetime.split(' ')[1];
+          const timeB = b.datetime.split(' ')[1];
+          return timeA.localeCompare(timeB);
+        });
+        return {
+          ...prevDays,
+          [day]: updatedDayActions,
+        };
+      });
+  
+      setTimeInputs(prev => ({ ...prev, [day]: '' }));
+      setActionInputs(prev => ({ ...prev, [day]: 0 }));
+      setInstanceInputs(prev => ({ ...prev, [day]: 100 }));
+      setMemorySizeInputs(prev => ({ ...prev, [day]: 1024 }));
+      setDiskSizeInputs(prev => ({ ...prev, [day]: 20 }));
+    } else {
       alert('Please fill in both time and action.');
-      return;
     }
-  
-    const newAction: Action = {
-      datetime: `${new Date().toISOString().split('T')[0]}T${time}:00.000Z`,
-      action,
-      params: action === 2 || action === 3 
-        ? { no_of_instances: instances }
-        : action === 4 || action === 5 
-          ? { memory_size: memorySize, disk_size: diskSize }
-          : undefined
-    };
-
-    setDays(prevDays => ({
-      ...prevDays,
-      [day]: [...prevDays[day], newAction].sort((a, b) => a.datetime.localeCompare(b.datetime))
-    }));
-  
-    setInputs(prev => ({
-      ...prev,
-      [day]: { time: '', action: 0, instances: 100, memorySize: 1024, diskSize: 20 }
-    }));
-  }, [inputs]);
+  }, [timeInputs, actionInputs, instanceInputs, memorySizeInputs, diskSizeInputs]);
 
   const removeAction = useCallback((day: string, datetime: string) => {
-    setDays(prevDays => ({
-      ...prevDays,
-      [day]: prevDays[day]
-        .filter(action => action.datetime !== datetime)
-        .sort((a, b) => a.datetime.localeCompare(b.datetime))
-    }));
+    setDays(prevDays => {
+      const updatedDayActions = prevDays[day].filter((action) => action.datetime !== datetime);
+      updatedDayActions.sort((a, b) => {
+        const timeA = a.datetime.split(' ')[1];
+        const timeB = b.datetime.split(' ')[1];
+        return timeA.localeCompare(timeB);
+      });
+      return {
+        ...prevDays,
+        [day]: updatedDayActions,
+      };
+    });
   }, []);
 
   const handleCopyClick = useCallback((toDay: string) => {
-    if (!selectedDay) {
+    if (selectedDay) {
+      setDays(prevDays => ({
+        ...prevDays,
+        [toDay]: [...prevDays[selectedDay]].sort((a, b) => a.datetime.localeCompare(b.datetime)),
+      }));
+    } else {
       alert('Please select a day to copy from.');
-      return;
     }
-  
-    setDays((prevDays) => ({
-      ...prevDays,
-      [toDay]: [...prevDays[selectedDay]]
-    }));
   }, [selectedDay]);
 
   const updateWeeklyPolicy = useCallback(() => {
-    setTimeout(() => {
-      const policyData = dayNames.map(day => [...days[day]]);
-      console.log(JSON.stringify(policyData));
-      onUpdatePolicy(policyData);
-    }, 0);
+    const policyData = dayNames.map(day => days[day]);
+    console.log(JSON.stringify(policyData));
+    onUpdatePolicy(policyData);
   }, [days, dayNames, onUpdatePolicy]);
 
-  const ActionItem: React.FC<{ action: Action; day: string }> = useCallback(({ action, day }) => {
-    const actionTypes = ['Standby', 'Awake All', 'Scale In', 'Scale Out', 'Scale Up', 'Scale Down'];
-  
-    return (
-      <div className="weekActionItem">
-        <div className="weekActionItemRow">
-          <span className="weekActionTime">{formatTime(action.datetime)}</span>
-          <span className="weekActionType">{actionTypes[action.action]}</span>
-          <FaMinusCircle className="weekIcon weekMinus" onClick={() => removeAction(day, action.datetime)} />
-        </div>
-        {action.params?.no_of_instances !== undefined && (
-          <span className="weekActionParam">{action.params.no_of_instances} instances</span>
-        )}
-        {action.params?.memory_size !== undefined && (
-          <span className="weekActionParam">{action.params.memory_size} MB memory</span>
-        )}
-        {action.params?.disk_size !== undefined && (
-          <span className="weekActionParam">{action.params.disk_size} GB disk</span>
-        )}
+  const ActionItem = useCallback(({ action, day }: { action: Action, day: string }) => (
+    <div key={action.datetime} className="weekActionItem">
+      <div className="weekActionItemRow">
+        <span className="weekActionTime">
+          {formatTime(action.datetime)}
+        </span>
+        <span className="weekActionType">
+          {action.action === 0 ? 'Standby' :
+           action.action === 1 ? 'Awake All' :
+           action.action === 2 ? 'Scale In' :
+           action.action === 3 ? 'Scale Out' :
+           action.action === 4 ? 'Scale Up' :
+           'Scale Down'}
+        </span>
+        <FaMinusCircle className="weekIcon weekMinus" onClick={() => removeAction(day, action.datetime)} />
       </div>
-    );
-  }, [removeAction]);
+      {action.params && action.params.no_of_instances && (
+        <span className="weekActionParam">{action.params.no_of_instances} instances</span>
+      )}
+      {action.params && action.params.memory_size && (
+        <span className="weekActionParam">{action.params.memory_size} MB memory</span>
+      )}
+      {action.params && action.params.disk_size && (
+        <span className="weekActionParam">{action.params.disk_size} GB disk</span>
+      )}
+    </div>
+  ), [removeAction]);
 
   return (
     <div className="weekTop">
@@ -176,16 +187,16 @@ const Weekly2: React.FC<WeeklyProps> = ({ existingPolicy, onUpdatePolicy }) => {
                     <input
                       type="time"
                       className="weekTime"
-                      value={inputs[day].time}
-                      onChange={(e) => updateInput(day, 'time', e.target.value)}
+                      value={timeInputs[day]}
+                      onChange={(e) => setTimeInputs(prev => ({ ...prev, [day]: e.target.value }))}
                     />
                   </div>
                   <div className="weekInputColumn">
                     <div className="weekParamsHeading">Action</div>
                     <select
-                      value={inputs[day].action}
+                      value={actionInputs[day]}
                       className="weekAction"
-                      onChange={(e) => updateInput(day, 'action', Number(e.target.value))}
+                      onChange={(e) => setActionInputs(prev => ({ ...prev, [day]: Number(e.target.value) }))}
                     >
                       <option value={0}>Standby</option>
                       <option value={1}>Awake All</option>
@@ -201,27 +212,27 @@ const Weekly2: React.FC<WeeklyProps> = ({ existingPolicy, onUpdatePolicy }) => {
                     </button>
                   </div>
                 </div>
-                {(inputs[day].action === 2 || inputs[day].action === 3) && (
+                {(actionInputs[day] === 2 || actionInputs[day] === 3) && (
                   <div className="weekInputGroup">
                     <div className="weekParamsHeading">No. of Instances</div>
                     <input
                       type="number"
                       className="weekInstances"
-                      value={inputs[day].instances}
-                      onChange={(e) => updateInput(day, 'instances', Number(e.target.value))}
+                      value={instanceInputs[day]}
+                      onChange={(e) => setInstanceInputs(prev => ({ ...prev, [day]: Number(e.target.value) }))}
                       placeholder="Number of instances"
                     />
                   </div>
                 )}
-                {(inputs[day].action === 4 || inputs[day].action === 5) && (
+                {(actionInputs[day] === 4 || actionInputs[day] === 5) && (
                   <>
                     <div className="weekInputGroup">
                       <div className="weekParamsHeading">Memory Size (MB)</div>
                       <input
                         type="number"
                         className="weekMemorySize"
-                        value={inputs[day].memorySize}
-                        onChange={(e) => updateInput(day, 'memorySize', Number(e.target.value))}
+                        value={memorySizeInputs[day]}
+                        onChange={(e) => setMemorySizeInputs(prev => ({ ...prev, [day]: Number(e.target.value) }))}
                         placeholder="Memory size (MB)"
                       />
                     </div>
@@ -230,8 +241,8 @@ const Weekly2: React.FC<WeeklyProps> = ({ existingPolicy, onUpdatePolicy }) => {
                       <input
                         type="number"
                         className="weekDiskSize"
-                        value={inputs[day].diskSize}
-                        onChange={(e) => updateInput(day, 'diskSize', Number(e.target.value))}
+                        value={diskSizeInputs[day]}
+                        onChange={(e) => setDiskSizeInputs(prev => ({ ...prev, [day]: Number(e.target.value) }))}
                         placeholder="Disk size (GB)"
                       />
                     </div>
@@ -251,7 +262,7 @@ const Weekly2: React.FC<WeeklyProps> = ({ existingPolicy, onUpdatePolicy }) => {
               </div>
               <hr />
               <div className="weekActionList">
-                {days[day].map((action) => (
+                {days[day] && days[day].map((action) => (
                   <ActionItem key={action.datetime} action={action} day={day} />
                 ))}
               </div>
