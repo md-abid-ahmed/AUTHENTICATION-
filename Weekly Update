@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { FaPlusCircle, FaMinusCircle } from 'react-icons/fa';
 import './Weekly.css';
-
 interface Action {
   datetime: string;
   action: number;
